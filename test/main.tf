@@ -19,6 +19,6 @@ data "aptible_organization" "org" { // ERIC
 
 resource "null_resource" "web" {
   provisioner "local-exec" {
-    command = "echo ${data.aptible_organization.org.id}"
+    command = "echo ${data.aptible_organization.org.name}"
   }
 }
