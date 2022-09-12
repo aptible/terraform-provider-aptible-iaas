@@ -1,4 +1,4 @@
-package aptible
+package models
 
 type Org struct {
 	ID   string `tfsdk:"id"`

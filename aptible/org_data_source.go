@@ -3,6 +3,7 @@ package aptible
 import (
 	"context"
 	"fmt"
+	"github.com/aptible/terraform-provider-aptible-iaas/aptible/models"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -40,7 +41,7 @@ type dataSourceOrgs struct {
 func (r dataSourceOrgs) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
 	// Declare struct that this function will set to this data source's state
 	var resourceState struct {
-		Orgs []Org `tfsdk:"orgs"`
+		Orgs []models.Org `tfsdk:"orgs"`
 	}
 
 	orgs, err := r.p.client.ListOrgs()
@@ -53,7 +54,7 @@ func (r dataSourceOrgs) Read(ctx context.Context, req tfsdk.ReadDataSourceReques
 	}
 
 	for _, org := range orgs {
-		resourceState.Orgs = append(resourceState.Orgs, Org{
+		resourceState.Orgs = append(resourceState.Orgs, models.Org{
 			ID:   org.Id,
 			Name: org.Name,
 		})

@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"terraform-provider-hashicups-pf/hashicups"
 
+	"github.com/aptible/terraform-provider-aptible-iaas/aptible"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 
 func main() {
-	providerserver.Serve(context.Background(), hashicups.New, providerserver.ServeOpts{
+	providerserver.Serve(context.Background(), aptible.New, providerserver.ServeOpts{
 		Address: "hashicorp.com/aptible-iaas",
 	})
 }
