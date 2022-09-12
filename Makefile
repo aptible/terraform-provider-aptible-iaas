@@ -28,13 +28,13 @@ release:
 
 
 build-local:
-	GOOS=darwin GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_darwin_amd64
+	GOOS=darwin GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_${LOCAL_TARGET}
 
 local-install: build-local
 	# delete existing if it's already been saved
 	rm "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/$(LOCAL_TARGET)" || true
 	mkdir -p "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/$(LOCAL_TARGET)"
-	cp ./bin/${BINARY}_${VERSION}_darwin_amd64 "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/$(LOCAL_TARGET)"
+	cp ./bin/${BINARY}_${VERSION}_${LOCAL_TARGET} "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/$(LOCAL_TARGET)"
 	@echo "Installed as provider aptible.com/aptible/aptible-iaas version 0.0.0+local"
 
 install: build
