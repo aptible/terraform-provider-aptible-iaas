@@ -154,6 +154,17 @@ func (c *Client) DestroyAsset(orgId string, envId string, assetId string) error 
 	return err
 }
 
+func (c *Client) AssetUpdate(assetId string, envId string, orgId string, params cac.AssetInput) (*cac.AssetOutput, error) {
+	request := c.
+		apiClient.
+		AssetsApi.
+		AssetUpdate(c.ctx, assetId, envId, orgId).
+		AssetInput(params)
+	asset, r, err := request.Execute()
+	c.HandleResponse(r)
+	return asset, err
+}
+
 func (c *Client) ListAssets(orgId string, envId string) ([]cac.AssetOutput, error) {
 	request := c.apiClient.EnvironmentsApi.EnvironmentGetAssets(
 		c.ctx,
