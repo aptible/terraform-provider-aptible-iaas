@@ -27,7 +27,7 @@ func (p *provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics)
 		Attributes: map[string]tfsdk.Attribute{
 			"token": {
 				Type:     types.StringType,
-				Optional: false,
+				Required: true,
 			},
 			"host": {
 				Type:     types.StringType,
@@ -144,7 +144,7 @@ func (p *provider) GetResources(_ context.Context) (map[string]tfsdk.ResourceTyp
 // GetDataSources - Defines provider data sources
 func (p *provider) GetDataSources(_ context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
 	return map[string]tfsdk.DataSourceType{
-		"iaas_organization": dataSourceOrgType{},
-		"iaas_environment":  dataSourceEnvType{},
+		"aptible_organization": dataSourceOrgType{},
+		"aptible_environment":  dataSourceEnvType{},
 	}, nil
 }
