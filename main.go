@@ -9,6 +9,6 @@ import (
 
 func main() {
 	providerserver.Serve(context.Background(), aptible.New, providerserver.ServeOpts{
-		Address: "hashicorp.com/aptible-iaas",
+		Address: "aptible.com/aptible/aptible-iaas",
 	})
 }

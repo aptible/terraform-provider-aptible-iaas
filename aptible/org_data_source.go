@@ -15,14 +15,13 @@ type dataSourceOrgType struct{}
 func (r dataSourceOrgType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
-			"organizations": {
+			"id": {
+				Type:     types.StringType,
+				Required: true,
+			},
+			"name": {
+				Type:     types.StringType,
 				Computed: true,
-				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"id": {
-						Type:     types.StringType,
-						Computed: true,
-					},
-				}),
 			},
 		},
 	}, nil
@@ -38,14 +37,18 @@ type dataSourceOrg struct {
 	p provider
 }
 
-func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
-	var resourceState struct {
-		Org *models.Org `tfsdk:"org"`
-	}
+type orgConfig struct {
+	ID   types.String `tfsdk:"id"`
+	Name types.String `tfsdk:"name"`
+}
 
-	var config models.Org
+func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
+	resourceState := models.Org{}
+
+	var config orgConfig
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -53,26 +56,25 @@ func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 	orgs, err := r.p.client.ListOrgs()
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error retrieving coffee",
+			"Error retrieving org",
 			err.Error(),
 		)
 		return
 	}
 
+	fmt.Fprintf(stderr, "[DEBUG]-Resource State:%+v", orgs)
 	for _, org := range orgs {
-		if org.Id == config.ID {
-			resourceState.Org = &models.Org{
-				ID:   org.Id,
-				Name: org.Name,
-			}
+		if org.Id == config.ID.Value {
+			resourceState.ID = org.Id
+			resourceState.Name = org.Name
 			break
 		}
 	}
 
-	if resourceState.Org == nil {
+	if resourceState.ID == "" {
 		resp.Diagnostics.AddError(
 			"Could not find organization",
-			config.ID,
+			config.ID.Value,
 		)
 	}
 
