@@ -13,6 +13,7 @@ data "aptible_organization" "org" { // ERIC
 
 data "aptible_environment" "env" { // ERIC
   id = "<UUID>" // TODO - revisit
+  org_id = data.org.id
 }
 
 resource "aptible_aws_vpc" "network" { // MADHU

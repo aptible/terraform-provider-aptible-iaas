@@ -10,12 +10,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type dataSourceOrgType struct{}
+type dataSourceEnvType struct{}
 
-func (r dataSourceOrgType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (r dataSourceEnvType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
-			"organizations": {
+			"environments": {
 				Computed: true,
 				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
 					"id": {
@@ -28,50 +28,50 @@ func (r dataSourceOrgType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diag
 	}, nil
 }
 
-func (r dataSourceOrgType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
-	return dataSourceOrg{
+func (r dataSourceEnvType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
+	return dataSourceEnv{
 		p: *(p.(*provider)),
 	}, nil
 }
 
-type dataSourceOrg struct {
+type dataSourceEnv struct {
 	p provider
 }
 
-func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
+func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
 	var resourceState struct {
-		Org *models.Org `tfsdk:"org"`
+		Env *models.Environment `tfsdk:"env"`
 	}
 
-	var config models.Org
+	var config models.Environment
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	orgs, err := r.p.client.ListOrgs()
+	envs, err := r.p.client.ListEnvironments(config.OrgID)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error retrieving coffee",
+			"Error retrieving environments",
 			err.Error(),
 		)
 		return
 	}
 
-	for _, org := range orgs {
-		if org.Id == config.ID {
-			resourceState.Org = &models.Org{
-				ID:   org.Id,
-				Name: org.Name,
+	for _, env := range envs {
+		if env.Id == config.ID {
+			resourceState.Env = &models.Environment{
+				ID:    env.Id,
+				Name:  env.Name,
+				OrgID: config.OrgID, // TODO: Can I do: env.Organization.Id?
 			}
 			break
 		}
 	}
-
-	if resourceState.Org == nil {
+	if resourceState.Env == nil {
 		resp.Diagnostics.AddError(
-			"Could not find organization",
+			"Could not find environment",
 			config.ID,
 		)
 	}
