@@ -1,7 +1,7 @@
 TEST?=$$(go list ./... | grep -v 'vendor')
-HOSTNAME=hashicorp.com
+HOSTNAME=aptible.com
 NAMESPACE=edu
-NAME=hashicups-pf
+NAME=aptible-iaas
 BINARY=terraform-provider-${NAME}
 VERSION=0.3.2
 OS_ARCH=darwin_amd64
