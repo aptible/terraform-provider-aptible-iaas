@@ -154,6 +154,8 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// todo - waiter
 }
 
 // Read resource information
@@ -222,7 +224,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 	}
 
 	// request update
-	result, err := r.p.client.AssetUpdate(
+	result, err := r.p.client.UpdateAsset(
 		assetInCloudApi.Id,
 		assetInCloudApi.Environment.Id,
 		assetInCloudApi.Environment.Organization.Id,
@@ -271,6 +273,8 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// todo - waiter
 }
 
 // Delete resource
