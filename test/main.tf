@@ -17,8 +17,12 @@ data "aptible_organization" "org" { // ERIC
   id = "e6c7394d-054c-454f-9710-dc02fa7406d3"
 }
 
+data "aptible_environment" "env" { // ERIC
+  id = "e6c7394d-054c-454f-9710-dc02fa7406d3"
+}
+
 resource "null_resource" "web" {
   provisioner "local-exec" {
-    command = "echo ${data.aptible_organization.org.name}"
+    command = "echo '${data.aptible_organization.org.name} ${data.aptible_environment.env.name}'"
   }
 }

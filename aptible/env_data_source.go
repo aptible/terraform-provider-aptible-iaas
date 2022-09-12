@@ -15,14 +15,17 @@ type dataSourceEnvType struct{}
 func (r dataSourceEnvType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
-			"environments": {
+			"id": {
+				Type:     types.StringType,
 				Computed: true,
-				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"id": {
-						Type:     types.StringType,
-						Computed: true,
-					},
-				}),
+			},
+			"name": {
+				Type:     types.StringType,
+				Computed: true,
+			},
+			"org_id": {
+				Type:     types.StringType,
+				Computed: true,
 			},
 		},
 	}, nil
@@ -38,19 +41,23 @@ type dataSourceEnv struct {
 	p provider
 }
 
-func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
-	var resourceState struct {
-		Env *models.Environment `tfsdk:"env"`
-	}
+type envConfig struct {
+	ID    types.String `tfsdk:"id"`
+	OrgID types.String `tfsdk:"org_id"`
+	Name  types.String `tfsdk:"name"`
+}
 
-	var config models.Environment
+func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
+	resourceState := &models.Environment{}
+
+	var config envConfig
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	envs, err := r.p.client.ListEnvironments(config.OrgID)
+	envs, err := r.p.client.ListEnvironments(config.OrgID.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error retrieving environments",
@@ -60,19 +67,18 @@ func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 	}
 
 	for _, env := range envs {
-		if env.Id == config.ID {
-			resourceState.Env = &models.Environment{
-				ID:    env.Id,
-				Name:  env.Name,
-				OrgID: config.OrgID, // TODO: Can I do: env.Organization.Id?
+		if env.Id == config.ID.Value {
+			resourceState = &models.Environment{
+				ID:   env.Id,
+				Name: env.Name,
 			}
 			break
 		}
 	}
-	if resourceState.Env == nil {
+	if resourceState == nil {
 		resp.Diagnostics.AddError(
 			"Could not find environment",
-			config.ID,
+			config.ID.Value,
 		)
 	}
 
