@@ -4,7 +4,7 @@ terraform {
       version = "~> 3.0"
     }
     aptible = {
-      source  = "aptible.com/prod/aptible-iaas"
+      source  = "aptible.com/aptible/aptible-iaas"
     }
   }
 }

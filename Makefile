@@ -1,10 +1,11 @@
 TEST?=$$(go list ./... | grep -v 'vendor')
 HOSTNAME=aptible.com
-NAMESPACE=prod
+NAMESPACE=aptible
 NAME=aptible-iaas
 BINARY=terraform-provider-${NAME}
 VERSION=0.0.1
-OS_ARCH=darwin_amd64
+TARGET=darwin_amd64
+LOCAL_TARGET=darwin_$(shell uname -p)64
 
 default: install
 
@@ -24,6 +25,14 @@ release:
 	GOOS=solaris GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_solaris_amd64
 	GOOS=windows GOARCH=386 go build -o ./bin/${BINARY}_${VERSION}_windows_386
 	GOOS=windows GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_windows_amd64
+
+build_local:
+	TARGET=$(LOCAL_TARGET) go build
+
+local-install: build_local
+	@mkdir -p "$$HOME/.terraform.d/plugins/aptible.com/aptible/aptible-iaas/0.0.0+local/$(LOCAL_TARGET)"
+	@cp terraform-provider-aptible-iaas "$$HOME/.terraform.d/plugins/aptible.com/aptible/aptible-iaas/0.0.0+local/$(LOCAL_TARGET)"
+	@echo "Installed as provider aptible.com/aptible/aptible-iaas version 0.0.0+local"
 
 install: build
 	mkdir -p ~/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS_ARCH}
