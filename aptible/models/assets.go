@@ -1,10 +1,7 @@
 package models
 
 type AssetBase struct {
-	Id          string `tfsdk:"id"`
-	Name        string `tfsdk:"name"`
-	Description string `tfsdk:"description"`
-	Version     string `tfsdk:"version"`
+	Id string `json:"id" tfsdk:"id"`
 
 	AssetPlatform string `tfsdk:"asset_platform"`
 	AssetType     string `tfsdk:"asset_type"`
@@ -12,6 +9,7 @@ type AssetBase struct {
 
 	EnvironmentId  string `tfsdk:"environment_id"`
 	OrganizationId string `tfsdk:"organization_id"`
+	Status         string `tfsdk:"status"`
 }
 
 type Asset struct {

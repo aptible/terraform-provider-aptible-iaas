@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -116,7 +117,7 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 				DELIMITER,
 			),
 			AssetParameters: assetParametersJson,
-			AssetVersion:    asset.Version,
+			AssetVersion:    asset.AssetVersion,
 		},
 	)
 	if err != nil {
@@ -202,58 +203,74 @@ func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 }
 
 func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceRequest, resp *tfsdk.UpdateResourceResponse) {
-	panic("not implemented")
-	//// Get plan values
-	//var plan models.Asset
-	//diags := req.Plan.Get(ctx, &plan)
-	//resp.Diagnostics.Append(diags...)
-	//if resp.Diagnostics.HasError() {
-	//	return
-	//}
-	//
-	//// Get current state
-	//var state models.Asset
-	//diags = req.State.Get(ctx, &state)
-	//resp.Diagnostics.Append(diags...)
-	//if resp.Diagnostics.HasError() {
-	//	return
-	//}
-	//
-	//// Update order by calling API
-	//assetInCloudApi, err := r.p.client.DescribeAsset(state.OrganizationId, state.EnvironmentId, state.Id)
-	//if err != nil {
-	//	resp.Diagnostics.AddError(
-	//		"Error update asset",
-	//		"Could not update asset id "+assetInCloudApi.Id+": "+err.Error(),
-	//	)
-	//	return
-	//}
-	//
-	//stringAssetParameters, err := json.Marshal(assetInCloudApi.CurrentAssetParameters)
-	//if err != nil {
-	//	resp.Diagnostics.AddError(
-	//		"Error marshaling asset parameters",
-	//		"Could not marshal asset parameters json, unexpected error: "+err.Error(),
-	//	)
-	//	return
-	//}
-	//
-	//// interpolate retrieved asset info with existing state
-	//asset := models.Asset{
-	//	AssetBase: models.AssetBase{
-	//		Id:             assetInCloudApi.Id,
-	//		EnvironmentId:  assetInCloudApi.Environment.Id,
-	//		OrganizationId: assetInCloudApi.Environment.Organization.Id,
-	//	},
-	//	Parameters: string(stringAssetParameters),
-	//}
-	//
-	//// Set state
-	//diags = resp.State.Set(ctx, result)
-	//resp.Diagnostics.Append(diags...)
-	//if resp.Diagnostics.HasError() {
-	//	return
-	//}
+	// Get plan values
+	var plan models.Asset
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Get current state and compare against remote
+	assetInCloudApi, err := r.p.client.DescribeAsset(plan.OrganizationId, plan.EnvironmentId, plan.Id)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error update asset",
+			"Could not update asset id "+assetInCloudApi.Id+": "+err.Error(),
+		)
+		return
+	}
+
+	// request update
+	result, err := r.p.client.AssetUpdate(
+		assetInCloudApi.Id,
+		assetInCloudApi.Environment.Id,
+		assetInCloudApi.Environment.Organization.Id,
+		cloud_api_client.AssetInput{
+			Asset: fmt.Sprintf(
+				"%s%s%s%s%s%s",
+				plan.AssetPlatform,
+				DELIMITER,
+				plan.AssetType,
+				DELIMITER,
+				plan.AssetVersion,
+				DELIMITER,
+			),
+			AssetParameters: assetInCloudApi.CurrentAssetParameters.Data,
+			AssetVersion:    plan.AssetVersion,
+		},
+	)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error requesting update from cloud api",
+			"Could not marshal asset parameters json, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	// generate json from update
+	assetParametersFromUpdate, err := json.Marshal(result.CurrentAssetParameters.Data)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error marshaling asset parameters",
+			"Could not marshal asset parameters json, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	// Set state
+	diags = resp.State.Set(ctx, models.Asset{
+		AssetBase: models.AssetBase{
+			Id:             result.Id,
+			EnvironmentId:  result.Environment.Id,
+			OrganizationId: result.Environment.Organization.Id,
+		},
+		Parameters: string(assetParametersFromUpdate),
+	})
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 // Delete resource
