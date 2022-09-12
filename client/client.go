@@ -154,7 +154,7 @@ func (c *Client) DestroyAsset(orgId string, envId string, assetId string) error 
 	return err
 }
 
-func (c *Client) AssetUpdate(assetId string, envId string, orgId string, params cac.AssetInput) (*cac.AssetOutput, error) {
+func (c *Client) UpdateAsset(assetId string, envId string, orgId string, params cac.AssetInput) (*cac.AssetOutput, error) {
 	request := c.
 		apiClient.
 		AssetsApi.
