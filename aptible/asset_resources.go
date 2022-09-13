@@ -35,14 +35,6 @@ var assetSchema = map[string]tfsdk.Attribute{
 		Type:        types.StringType,
 		Required:    true,
 	},
-	"name": {
-		Type:     types.StringType,
-		Required: true,
-	},
-	"description": {
-		Type:     types.StringType,
-		Required: false,
-	},
 	"asset_platform": {
 		Type:     types.StringType,
 		Required: true,
@@ -55,8 +47,9 @@ var assetSchema = map[string]tfsdk.Attribute{
 		Type:     types.StringType,
 		Required: true,
 	},
-	"asset_parameters": {
-		Type: types.StringType,
+	"parameters": {
+		Type:     types.StringType,
+		Optional: true,
 	},
 }
 
@@ -93,7 +86,7 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 	}
 
 	var assetParametersJson map[string]interface{}
-	err := json.Unmarshal([]byte(asset.Parameters), &assetParametersJson)
+	err := json.Unmarshal([]byte(asset.Parameters.String()), &assetParametersJson)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to generate json from asset parameters",
@@ -104,8 +97,8 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 
 	tflog.Info(ctx, "Creating asset")
 	createdAsset, err := r.p.client.CreateAsset(
-		asset.OrganizationId,
-		asset.EnvironmentId,
+		asset.OrganizationId.String(),
+		asset.EnvironmentId.String(),
 		cloud_api_client.AssetInput{
 			Asset: fmt.Sprintf(
 				"%s%s%s%s%s%s",
@@ -117,7 +110,7 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 				DELIMITER,
 			),
 			AssetParameters: assetParametersJson,
-			AssetVersion:    asset.AssetVersion,
+			AssetVersion:    asset.AssetVersion.String(),
 		},
 	)
 	if err != nil {
@@ -142,11 +135,11 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 
 	result := models.Asset{
 		AssetBase: models.AssetBase{
-			Id:             createdAsset.Id,
-			EnvironmentId:  createdAsset.Environment.Id,
-			OrganizationId: createdAsset.Environment.Organization.Id,
+			Id:             types.String{Value: createdAsset.Id},
+			EnvironmentId:  types.String{Value: createdAsset.Environment.Id},
+			OrganizationId: types.String{Value: createdAsset.Environment.Organization.Id},
 		},
-		Parameters: string(stringAssetParameters),
+		Parameters: types.String{Value: string(stringAssetParameters)},
 	}
 
 	diags = resp.State.Set(ctx, result)
@@ -168,11 +161,11 @@ func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 		return
 	}
 
-	assetClientOutput, err := r.p.client.DescribeAsset(state.OrganizationId, state.EnvironmentId, state.Id)
+	assetClientOutput, err := r.p.client.DescribeAsset(state.OrganizationId.String(), state.EnvironmentId.String(), state.Id.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading asset",
-			"Could not read ID "+state.Id+": "+err.Error(),
+			"Could not read ID "+state.Id.String()+": "+err.Error(),
 		)
 		return
 	}
@@ -189,11 +182,11 @@ func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 	// interpolate retrieved asset info with existing state
 	asset := models.Asset{
 		AssetBase: models.AssetBase{
-			Id:             assetClientOutput.Id,
-			EnvironmentId:  assetClientOutput.Environment.Id,
-			OrganizationId: assetClientOutput.Environment.Organization.Id,
+			Id:             types.String{Value: assetClientOutput.Id},
+			EnvironmentId:  types.String{Value: assetClientOutput.Environment.Id},
+			OrganizationId: types.String{Value: assetClientOutput.Environment.Organization.Id},
 		},
-		Parameters: string(stringAssetParameters),
+		Parameters: types.String{Value: string(stringAssetParameters)},
 	}
 
 	// Set state
@@ -214,7 +207,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 	}
 
 	// Get current state and compare against remote
-	assetInCloudApi, err := r.p.client.DescribeAsset(plan.OrganizationId, plan.EnvironmentId, plan.Id)
+	assetInCloudApi, err := r.p.client.DescribeAsset(plan.OrganizationId.String(), plan.EnvironmentId.String(), plan.Id.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error update asset",
@@ -239,7 +232,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 				DELIMITER,
 			),
 			AssetParameters: assetInCloudApi.CurrentAssetParameters.Data,
-			AssetVersion:    plan.AssetVersion,
+			AssetVersion:    plan.AssetVersion.String(),
 		},
 	)
 	if err != nil {
@@ -263,11 +256,11 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 	// Set state
 	diags = resp.State.Set(ctx, models.Asset{
 		AssetBase: models.AssetBase{
-			Id:             result.Id,
-			EnvironmentId:  result.Environment.Id,
-			OrganizationId: result.Environment.Organization.Id,
+			Id:             types.String{Value: result.Id},
+			EnvironmentId:  types.String{Value: result.Environment.Id},
+			OrganizationId: types.String{Value: result.Environment.Organization.Id},
 		},
-		Parameters: string(assetParametersFromUpdate),
+		Parameters: types.String{Value: string(assetParametersFromUpdate)},
 	})
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -287,11 +280,11 @@ func (r resourceAsset) Delete(ctx context.Context, req tfsdk.DeleteResourceReque
 	}
 
 	// Delete asset by calling API
-	err := r.p.client.DestroyAsset(state.OrganizationId, state.EnvironmentId, state.Id)
+	err := r.p.client.DestroyAsset(state.OrganizationId.String(), state.EnvironmentId.String(), state.Id.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting asset",
-			"Could not delete asset id "+state.Id+": "+err.Error(),
+			"Could not delete asset id "+state.Id.String()+": "+err.Error(),
 		)
 		return
 	}

@@ -1,18 +1,20 @@
 package models
 
+import "github.com/hashicorp/terraform-plugin-framework/types"
+
 type AssetBase struct {
-	Id string `json:"id" tfsdk:"id"`
+	Id types.String `json:"id" tfsdk:"id"`
 
-	AssetPlatform string `tfsdk:"asset_platform"`
-	AssetType     string `tfsdk:"asset_type"`
-	AssetVersion  string `tfsdk:"asset_version"`
+	AssetPlatform types.String `tfsdk:"asset_platform"`
+	AssetType     types.String `tfsdk:"asset_type"`
+	AssetVersion  types.String `tfsdk:"asset_version"`
 
-	EnvironmentId  string `tfsdk:"environment_id"`
-	OrganizationId string `tfsdk:"organization_id"`
-	Status         string `tfsdk:"status"`
+	EnvironmentId  types.String `tfsdk:"environment_id"`
+	OrganizationId types.String `tfsdk:"organization_id"`
+	Status         types.String `tfsdk:"status"`
 }
 
 type Asset struct {
 	AssetBase
-	Parameters string `tfsdk:"parameters"`
+	Parameters types.String `tfsdk:"parameters"`
 }
