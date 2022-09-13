@@ -11,6 +11,7 @@ Whenever we want to interface with the API, we should use this interface.
 */
 type CloudClient interface {
 	ListEnvironments(orgId string) ([]cac.EnvironmentOutput, error)
+	DescribeEnvironment(orgId, envId string) (*cac.EnvironmentOutput, error)
 	CreateEnvironment(orgId string, params cac.EnvironmentInput) (*cac.EnvironmentOutput, error)
 	DestroyEnvironment(orgId, envId string) error
 

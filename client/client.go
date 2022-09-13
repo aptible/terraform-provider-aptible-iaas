@@ -89,6 +89,20 @@ func (c *Client) CreateEnvironment(orgId string, params cac.EnvironmentInput) (*
 	return env, err
 }
 
+func (c *Client) DescribeEnvironment(orgId string, envId string) (*cac.EnvironmentOutput, error) {
+	env, r, err := c.
+		apiClient.
+		EnvironmentsApi.
+		EnvironmentGet(
+			c.ctx,
+			envId,
+			orgId,
+		).
+		Execute()
+	c.HandleResponse(r)
+	return env, err
+}
+
 func (c *Client) DestroyEnvironment(orgId string, envId string) error {
 	_, r, err := c.
 		apiClient.

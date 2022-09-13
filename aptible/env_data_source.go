@@ -15,14 +15,17 @@ type dataSourceEnvType struct{}
 func (r dataSourceEnvType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
-			"environments": {
+			"id": {
+				Type:     types.StringType,
+				Required: true,
+			},
+			"org_id": {
+				Type:     types.StringType,
+				Required: true,
+			},
+			"name": {
+				Type:     types.StringType,
 				Computed: true,
-				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"id": {
-						Type:     types.StringType,
-						Computed: true,
-					},
-				}),
 			},
 		},
 	}, nil
@@ -38,19 +41,25 @@ type dataSourceEnv struct {
 	p provider
 }
 
+type envConfig struct {
+	ID    types.String `tfsdk:"id"`
+	OrgId types.String `tfsdk:"org_id"`
+	Name  types.String `tfsdk:"name"`
+}
+
 func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
 	var resourceState struct {
 		Env *models.Environment `tfsdk:"env"`
 	}
 
-	var config models.Environment
+	var config envConfig
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	envs, err := r.p.client.ListEnvironments(config.OrgID)
+	env, err := r.p.client.DescribeEnvironment(config.OrgId.String(), config.ID.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error retrieving environments",
@@ -59,21 +68,10 @@ func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 		return
 	}
 
-	for _, env := range envs {
-		if env.Id == config.ID {
-			resourceState.Env = &models.Environment{
-				ID:    env.Id,
-				Name:  env.Name,
-				OrgID: config.OrgID, // TODO: Can I do: env.Organization.Id?
-			}
-			break
-		}
-	}
-	if resourceState.Env == nil {
-		resp.Diagnostics.AddError(
-			"Could not find environment",
-			config.ID,
-		)
+	resourceState.Env = &models.Environment{
+		ID:    env.Id,
+		OrgID: env.Organization.Id,
+		Name:  env.Name,
 	}
 
 	// To view this message, set the TF_LOG environment variable to DEBUG
