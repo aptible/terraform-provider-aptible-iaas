@@ -13,7 +13,7 @@ provider "aptible" {
   host = "cloud-api.sandbox.aptible-cloud-staging.com"
 }
 
-data "aptible_organization" "org" { // ERIC
+data "aptible_organization" "org" {
   id = "e6c7394d-054c-454f-9710-dc02fa7406d3"
 }
 

@@ -23,6 +23,7 @@ type CloudClient interface {
 	ListAssets(orgId, envId string) ([]cac.AssetOutput, error)
 	DescribeAsset(orgId, envId, assetId string) (*cac.AssetOutput, error)
 	DestroyAsset(orgId, envId, assetID string) error
+	UpdateAsset(assetId string, envId string, orgId string, params cac.AssetInput) (*cac.AssetOutput, error)
 
 	ListOperationsByAsset(orgId, assetId string) ([]cac.OperationOutput, error)
 
