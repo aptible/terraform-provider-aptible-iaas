@@ -2,12 +2,13 @@ package aptible
 
 import (
 	"context"
-	"fmt"
-	"github.com/aptible/terraform-provider-aptible-iaas/aptible/models"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/aptible/terraform-provider-aptible-iaas/aptible/models"
 )
 
 type dataSourceEnvType struct{}
@@ -48,10 +49,6 @@ type envConfig struct {
 }
 
 func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
-	var resourceState struct {
-		Env *models.Environment `tfsdk:"env"`
-	}
-
 	var config envConfig
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
@@ -68,18 +65,16 @@ func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 		return
 	}
 
-	resourceState.Env = &models.Environment{
+	state := &models.Environment{
 		ID:    env.Id,
 		OrgID: env.Organization.Id,
 		Name:  env.Name,
 	}
 
-	// To view this message, set the TF_LOG environment variable to DEBUG
-	// 		`export TF_LOG=DEBUG`
-	fmt.Fprintf(stderr, "[DEBUG]-Resource State:%+v", resourceState)
+	tflog.Debug(ctx, "Creating asset", map[string]interface{}{"state": state})
 
 	// Set state
-	diags = resp.State.Set(ctx, &resourceState)
+	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return

@@ -2,12 +2,13 @@ package aptible
 
 import (
 	"context"
-	"fmt"
-	"github.com/aptible/terraform-provider-aptible-iaas/aptible/models"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/aptible/terraform-provider-aptible-iaas/aptible/models"
 )
 
 type dataSourceOrgType struct{}
@@ -43,8 +44,6 @@ type orgConfig struct {
 }
 
 func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
-	resourceState := models.Org{}
-
 	var config orgConfig
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
@@ -53,7 +52,7 @@ func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 		return
 	}
 
-	orgs, err := r.p.client.ListOrgs()
+	org, err := r.p.client.FindOrg(config.ID.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error retrieving org",
@@ -62,28 +61,15 @@ func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 		return
 	}
 
-	fmt.Fprintf(stderr, "[DEBUG]-Resource State:%+v", orgs)
-	for _, org := range orgs {
-		if org.Id == config.ID.Value {
-			resourceState.ID = org.Id
-			resourceState.Name = org.Name
-			break
-		}
+	state := &models.Org{
+		ID:   org.Id,
+		Name: org.Name,
 	}
 
-	if resourceState.ID == "" {
-		resp.Diagnostics.AddError(
-			"Could not find organization",
-			config.ID.Value,
-		)
-	}
-
-	// To view this message, set the TF_LOG environment variable to DEBUG
-	// 		`export TF_LOG=DEBUG`
-	fmt.Fprintf(stderr, "[DEBUG]-Resource State:%+v", resourceState)
+	tflog.Debug(ctx, "Creating asset", map[string]interface{}{"state": state})
 
 	// Set state
-	diags = resp.State.Set(ctx, &resourceState)
+	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
