@@ -38,13 +38,8 @@ type dataSourceOrg struct {
 	p provider
 }
 
-type orgConfig struct {
-	ID   types.String `tfsdk:"id"`
-	Name types.String `tfsdk:"name"`
-}
-
 func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
-	var config orgConfig
+	var config models.Org
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 
@@ -62,8 +57,8 @@ func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 	}
 
 	state := &models.Org{
-		ID:   org.Id,
-		Name: org.Name,
+		ID:   types.String{Value: org.Id},
+		Name: types.String{Value: org.Name},
 	}
 
 	tflog.Debug(ctx, "Creating asset", map[string]interface{}{"state": state})

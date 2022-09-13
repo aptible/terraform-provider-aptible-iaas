@@ -42,21 +42,15 @@ type dataSourceEnv struct {
 	p provider
 }
 
-type envConfig struct {
-	ID    types.String `tfsdk:"id"`
-	OrgId types.String `tfsdk:"org_id"`
-	Name  types.String `tfsdk:"name"`
-}
-
 func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
-	var config envConfig
+	var config models.Environment
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	env, err := r.p.client.DescribeEnvironment(config.OrgId.String(), config.ID.String())
+	env, err := r.p.client.DescribeEnvironment(config.OrgID.String(), config.ID.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error retrieving environments",
@@ -66,9 +60,9 @@ func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 	}
 
 	state := &models.Environment{
-		ID:    env.Id,
-		OrgID: env.Organization.Id,
-		Name:  env.Name,
+		ID:    types.String{Value: env.Id},
+		OrgID: types.String{Value: env.Organization.Id},
+		Name:  types.String{Value: env.Name},
 	}
 
 	tflog.Debug(ctx, "Creating asset", map[string]interface{}{"state": state})
