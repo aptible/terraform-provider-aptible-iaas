@@ -62,10 +62,9 @@ resource "aptible_asset" "app" { // MADHU
   })
 }
 #
-#resource "aptible_resource_connection" "database_to_ecs" { // TODO
-#  name = "ecs_to_rds"
-#  description = "Allow ECS to Access RDS Database"
-#  incoming_asset_connection = aptible_aws_rds.db.id
-#  outgoing_asset_connection = aptible_aws_ecs.app.id
-#  tags = {}
-#}
+resource "aptible_resource_connection" "database_to_ecs" { // TODO
+  name = "ecs_to_rds"
+  description = "Allow ECS to Access RDS Database"
+  incoming_asset_connection = aptible_asset.db.id
+  outgoing_asset_connection = aptible_asset.app.id
+}
