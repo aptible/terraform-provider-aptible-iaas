@@ -30,4 +30,5 @@ type CloudClient interface {
 
 	CreateConnection(orgId, envId, assetId string, params cac.ConnectionInput) (*cac.ConnectionOutput, error)
 	DestroyConnection(orgId, envId, assetId, connectionId string) error
+	GetConnection(orgId, envId, assetId, connectionId string) (*cac.ConnectionOutput, error)
 }

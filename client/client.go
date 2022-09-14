@@ -237,6 +237,22 @@ func (c *Client) ListAssetBundles(orgId string, envId string) ([]cac.AssetBundle
 	return bundles, err
 }
 
+func (c *Client) GetConnection(orgId, envId, assetId, connectionId string) (*cac.ConnectionOutput, error) {
+	request := c.
+		apiClient.
+		ConnectionsApi.
+		ConnectionGet(
+			c.ctx,
+			assetId,
+			envId,
+			connectionId,
+			orgId,
+		)
+	conn, r, err := request.Execute()
+	c.HandleResponse(r)
+	return conn, err
+}
+
 func (c *Client) CreateConnection(orgId, envId, assetId string, params cac.ConnectionInput) (*cac.ConnectionOutput, error) {
 	request := c.
 		apiClient.
