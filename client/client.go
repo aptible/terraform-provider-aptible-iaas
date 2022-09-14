@@ -89,6 +89,20 @@ func (c *Client) CreateEnvironment(orgId string, params cac.EnvironmentInput) (*
 	return env, err
 }
 
+func (c *Client) DescribeEnvironment(orgId string, envId string) (*cac.EnvironmentOutput, error) {
+	env, r, err := c.
+		apiClient.
+		EnvironmentsApi.
+		EnvironmentGet(
+			c.ctx,
+			envId,
+			orgId,
+		).
+		Execute()
+	c.HandleResponse(r)
+	return env, err
+}
+
 func (c *Client) DestroyEnvironment(orgId string, envId string) error {
 	_, r, err := c.
 		apiClient.
@@ -221,6 +235,22 @@ func (c *Client) ListAssetBundles(orgId string, envId string) ([]cac.AssetBundle
 	bundles, r, err := request.Execute()
 	c.HandleResponse(r)
 	return bundles, err
+}
+
+func (c *Client) GetConnection(orgId, envId, assetId, connectionId string) (*cac.ConnectionOutput, error) {
+	request := c.
+		apiClient.
+		ConnectionsApi.
+		ConnectionGet(
+			c.ctx,
+			assetId,
+			envId,
+			connectionId,
+			orgId,
+		)
+	conn, r, err := request.Execute()
+	c.HandleResponse(r)
+	return conn, err
 }
 
 func (c *Client) CreateConnection(orgId, envId, assetId string, params cac.ConnectionInput) (*cac.ConnectionOutput, error) {

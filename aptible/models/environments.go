@@ -1,7 +1,9 @@
 package models
 
+import "github.com/hashicorp/terraform-plugin-framework/types"
+
 type Environment struct {
-	ID    string `tfsdk:"id"`
-	OrgID string `tfsdk:"org_id"`
-	Name  string `tfsdk:"name"`
+	ID    types.String `tfsdk:"id"`
+	OrgID types.String `tfsdk:"org_id"`
+	Name  types.String `tfsdk:"name"`
 }

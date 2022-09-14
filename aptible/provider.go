@@ -8,6 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/aptible/terraform-provider-aptible-iaas/aptible/utils"
 )
 
 var stderr = os.Stderr
@@ -19,6 +21,7 @@ func New() tfsdk.Provider {
 type provider struct {
 	configured bool
 	client     client.CloudClient
+	utils      utils.UtilsImpl
 }
 
 // GetSchema
@@ -133,13 +136,14 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 	c := client.NewClient(debug, host, token)
 
 	p.client = c
+	p.utils = utils.NewUtils(p.client)
 	p.configured = true
 }
 
 // GetResources - Defines provider resources
 func (p *provider) GetResources(_ context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
 	return map[string]tfsdk.ResourceType{
-		"asset": resourceAssetType{},
+		"aptible_asset": resourceAssetType{},
 	}, nil
 }
 

@@ -2,12 +2,13 @@ package aptible
 
 import (
 	"context"
-	"fmt"
-	"github.com/aptible/terraform-provider-aptible-iaas/aptible/models"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/aptible/terraform-provider-aptible-iaas/aptible/models"
 )
 
 type dataSourceEnvType struct{}
@@ -15,14 +16,17 @@ type dataSourceEnvType struct{}
 func (r dataSourceEnvType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
-			"environments": {
+			"id": {
+				Type:     types.StringType,
+				Required: true,
+			},
+			"org_id": {
+				Type:     types.StringType,
+				Required: true,
+			},
+			"name": {
+				Type:     types.StringType,
 				Computed: true,
-				Attributes: tfsdk.ListNestedAttributes(map[string]tfsdk.Attribute{
-					"id": {
-						Type:     types.StringType,
-						Computed: true,
-					},
-				}),
 			},
 		},
 	}, nil
@@ -39,10 +43,6 @@ type dataSourceEnv struct {
 }
 
 func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
-	var resourceState struct {
-		Env *models.Environment `tfsdk:"env"`
-	}
-
 	var config models.Environment
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
@@ -50,7 +50,7 @@ func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 		return
 	}
 
-	envs, err := r.p.client.ListEnvironments(config.OrgID)
+	env, err := r.p.client.DescribeEnvironment(config.OrgID.String(), config.ID.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error retrieving environments",
@@ -59,29 +59,16 @@ func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 		return
 	}
 
-	for _, env := range envs {
-		if env.Id == config.ID {
-			resourceState.Env = &models.Environment{
-				ID:    env.Id,
-				Name:  env.Name,
-				OrgID: config.OrgID, // TODO: Can I do: env.Organization.Id?
-			}
-			break
-		}
-	}
-	if resourceState.Env == nil {
-		resp.Diagnostics.AddError(
-			"Could not find environment",
-			config.ID,
-		)
+	state := &models.Environment{
+		ID:    types.String{Value: env.Id},
+		OrgID: types.String{Value: env.Organization.Id},
+		Name:  types.String{Value: env.Name},
 	}
 
-	// To view this message, set the TF_LOG environment variable to DEBUG
-	// 		`export TF_LOG=DEBUG`
-	fmt.Fprintf(stderr, "[DEBUG]-Resource State:%+v", resourceState)
+	tflog.Debug(ctx, "Creating asset", map[string]interface{}{"state": state})
 
 	// Set state
-	diags = resp.State.Set(ctx, &resourceState)
+	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return

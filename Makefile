@@ -1,11 +1,12 @@
-TEST?=$$(go list ./... | grep -v 'vendor')
-HOSTNAME=aptible.com
-NAMESPACE=aptible
-NAME=aptible-iaas
-BINARY=terraform-provider-${NAME}
-VERSION=0.0.0+local
-TARGET=darwin_amd64
-LOCAL_TARGET=darwin_amd64
+TEST? = $$(go list ./... | grep -v 'vendor')
+HOSTNAME = aptible.com
+NAMESPACE = aptible
+NAME = aptible-iaas
+BINARY = terraform-provider-${NAME}
+VERSION = 0.0.0+local
+TARGET = darwin_amd64
+LOCAL_ARCH ?= amd64
+LOCAL_TARGET ?= darwin_${LOCAL_ARCH}
 
 default: install
 
@@ -28,7 +29,7 @@ release:
 
 
 build-local:
-	GOOS=darwin GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_${LOCAL_TARGET}
+	GOOS=darwin GOARCH=${LOCAL_ARCH} go build -o ./bin/${BINARY}_${VERSION}_${LOCAL_TARGET}
 
 local-install: build-local
 	# delete existing if it's already been saved
