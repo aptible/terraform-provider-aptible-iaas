@@ -1,4 +1,4 @@
-package models
+package environment
 
 import "github.com/hashicorp/terraform-plugin-framework/types"
 

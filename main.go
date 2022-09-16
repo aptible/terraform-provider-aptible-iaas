@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 
-	"github.com/aptible/terraform-provider-aptible-iaas/aptible"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider"
 )
 
 func main() {
-	providerserver.Serve(context.Background(), aptible.New, providerserver.ServeOpts{
+	providerserver.Serve(context.Background(), provider.New, providerserver.ServeOpts{
 		Address: "aptible.com/aptible/aptible-iaas",
 	})
 }

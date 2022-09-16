@@ -1,4 +1,4 @@
-package aptible
+package environment
 
 import (
 	"context"
@@ -8,12 +8,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/aptible/terraform-provider-aptible-iaas/aptible/models"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/common"
 )
 
-type dataSourceEnvType struct{}
+type DataSourceEnvType struct{}
 
-func (r dataSourceEnvType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (r DataSourceEnvType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
 			"id": {
@@ -32,25 +32,25 @@ func (r dataSourceEnvType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diag
 	}, nil
 }
 
-func (r dataSourceEnvType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
+func (r DataSourceEnvType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
 	return dataSourceEnv{
-		p: *(p.(*provider)),
+		p: *(p.(*common.Provider)),
 	}, nil
 }
 
 type dataSourceEnv struct {
-	p provider
+	p common.Provider
 }
 
 func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
-	var config models.Environment
+	var config Environment
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	env, err := r.p.client.DescribeEnvironment(config.OrgID.String(), config.ID.String())
+	env, err := r.p.Client.DescribeEnvironment(config.OrgID.String(), config.ID.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error retrieving environments",
@@ -59,7 +59,7 @@ func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 		return
 	}
 
-	state := &models.Environment{
+	state := &Environment{
 		ID:    types.String{Value: env.Id},
 		OrgID: types.String{Value: env.Organization.Id},
 		Name:  types.String{Value: env.Name},

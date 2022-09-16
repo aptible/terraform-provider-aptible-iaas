@@ -1,4 +1,4 @@
-package aptible
+package organization
 
 import (
 	"context"
@@ -8,16 +8,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/aptible/terraform-provider-aptible-iaas/aptible/models"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/common"
 )
 
-type dataSourceOrgType struct{}
+type DataSourceOrgType struct{}
 
-func (r dataSourceOrgType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (r DataSourceOrgType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
 			"id": {
-				Type:     types.StringType,
+				Type: types.MapType{
+					ElemType: types.StringType,
+				},
 				Required: true,
 			},
 			"name": {
@@ -28,18 +30,18 @@ func (r dataSourceOrgType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diag
 	}, nil
 }
 
-func (r dataSourceOrgType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
+func (r DataSourceOrgType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
 	return dataSourceOrg{
-		p: *(p.(*provider)),
+		p: *(p.(*common.Provider)),
 	}, nil
 }
 
 type dataSourceOrg struct {
-	p provider
+	p common.Provider
 }
 
 func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
-	var config models.Org
+	var config Org
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 
@@ -47,7 +49,7 @@ func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 		return
 	}
 
-	org, err := r.p.client.FindOrg(config.ID.String())
+	org, err := r.p.Client.FindOrg(config.ID.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error retrieving org",
@@ -56,7 +58,7 @@ func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 		return
 	}
 
-	state := &models.Org{
+	state := &Org{
 		ID:   types.String{Value: org.Id},
 		Name: types.String{Value: org.Name},
 	}

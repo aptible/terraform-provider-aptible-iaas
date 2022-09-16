@@ -1,8 +1,9 @@
-package aptible
+package connection
 
 import (
 	"context"
-	"github.com/aptible/terraform-provider-aptible-iaas/aptible/models"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider"
+
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -47,12 +48,12 @@ func (r connectionType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnos
 
 func (r connectionType) NewResource(_ context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
 	return resourceConnection{
-		p: *(p.(*provider)),
+		p: *(p.(*provider.provider)),
 	}, nil
 }
 
 type resourceConnection struct {
-	p provider
+	p provider.provider
 }
 
 func (r resourceConnection) Create(ctx context.Context, req tfsdk.CreateResourceRequest, resp *tfsdk.CreateResourceResponse) {
@@ -61,7 +62,7 @@ func (r resourceConnection) Create(ctx context.Context, req tfsdk.CreateResource
 
 // Read resource information
 func (r resourceConnection) Read(ctx context.Context, req tfsdk.ReadResourceRequest, resp *tfsdk.ReadResourceResponse) {
-	var state models.Connection
+	var state Connection
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -83,7 +84,7 @@ func (r resourceConnection) Read(ctx context.Context, req tfsdk.ReadResourceRequ
 	}
 
 	// TODO FINISH THIS
-	_ = models.Connection{
+	_ = Connection{
 		Name:                    state.Name,        // TODO, currently not assigned to backend or sent
 		Description:             state.Description, // TODO, currently not assigned to backend or sent
 		Id:                      types.String{Value: connectionClientOutput.Id},
