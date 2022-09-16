@@ -137,10 +137,10 @@ func (p *Provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 
 // GetResources - Defines Provider resources
 func (p *Provider) GetResources(ctx context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
-	return ctx.Value("aptible_resources").(map[string]tfsdk.ResourceType), nil
+	return p.ProviderRootContext.Value("aptible_resources").(map[string]tfsdk.ResourceType), nil
 }
 
 // GetDataSources - Defines Provider data sources
 func (p *Provider) GetDataSources(ctx context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
-	return ctx.Value("aptible_data_sources").(map[string]tfsdk.DataSourceType), nil
+	return p.ProviderRootContext.Value("aptible_data_sources").(map[string]tfsdk.DataSourceType), nil
 }

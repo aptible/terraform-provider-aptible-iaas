@@ -1,3 +1,0 @@
-create interface implementation and pass in map structure
-
-use that interface implementation for New in main.go in root of repo
