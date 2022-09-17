@@ -2,63 +2,21 @@ package vpc
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"golang.org/x/exp/maps"
 
-	cloud_api_client "github.com/aptible/cloud-api-clients/clients/go"
-
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/common"
 )
 
-const DELIMITER = "__"
-
 type ResourceAssetType struct{}
-
-var assetSchema = map[string]tfsdk.Attribute{
-	"id": {
-		Description: "A valid asset id",
-		Type:        types.StringType,
-		Computed:    true,
-	},
-	"environment_id": {
-		Description: "A valid environment id",
-		Type:        types.StringType,
-		Required:    true,
-	},
-	"organization_id": {
-		Description: "A valid organization id",
-		Type:        types.StringType,
-		Required:    true,
-	},
-	"asset_platform": {
-		Type:     types.StringType,
-		Required: true,
-	},
-	"asset_type": {
-		Type:     types.StringType,
-		Required: true,
-	},
-	"asset_version": {
-		Type:     types.StringType,
-		Required: true,
-	},
-}
-
-var vpcAssetParameterSchema = map[string]tfsdk.Attribute{}
-
-func init() {
-	maps.Copy(vpcAssetParameterSchema, assetSchema)
-}
 
 func (r ResourceAssetType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
-		Attributes: vpcAssetParameterSchema,
+		Attributes: AssetSchema,
 	}, nil
 }
 
@@ -89,19 +47,13 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 	}
 
 	tflog.Info(ctx, "Creating asset", map[string]interface{}{"asset": asset})
+
+	assetInput, _ := client.PopulateClientAssetInputForCreate(asset, "vpc", "aws")
+
 	createdAsset, err := r.p.Client.CreateAsset(
 		asset.OrganizationId.String(),
 		asset.EnvironmentId.String(),
-		cloud_api_client.AssetInput{
-			Asset: fmt.Sprintf(
-				"aws%svpc%s%s%s",
-				DELIMITER,
-				DELIMITER,
-				asset.AssetVersion,
-				DELIMITER,
-			),
-			AssetVersion: asset.AssetVersion.String(),
-		},
+		*assetInput,
 	)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -120,17 +72,13 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 		},
 	)
 
-	name, _ := createdAsset.CurrentAssetParameters.Data["name"]
-
-	result := VPC{
-		AssetBase: common.AssetBase{
-			Id:             types.String{Value: createdAsset.Id},
-			EnvironmentId:  types.String{Value: createdAsset.Environment.Id},
-			OrganizationId: types.String{Value: createdAsset.Environment.Organization.Id},
-		},
-		AssetParameters: VPCAssetParameters{
-			Name: types.String{Value: name.(string)},
-		},
+	result, err := GenerateResourceFromAssetOutput(createdAsset)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating asset",
+			"Error when creating asset"+asset.Id.String()+": "+err.Error(),
+		)
+		return
 	}
 
 	diags = resp.State.Set(ctx, result)
@@ -172,19 +120,13 @@ func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 		return
 	}
 
-	name, _ := assetClientOutput.CurrentAssetParameters.Data["name"]
-
-	// interpolate retrieved asset info with existing state
-	asset := VPC{
-		AssetBase: common.AssetBase{
-			Id:             types.String{Value: assetClientOutput.Id},
-			EnvironmentId:  types.String{Value: assetClientOutput.Environment.Id},
-			OrganizationId: types.String{Value: assetClientOutput.Environment.Organization.Id},
-		},
-
-		AssetParameters: VPCAssetParameters{
-			Name: types.String{Value: name.(string)},
-		},
+	asset, err := GenerateResourceFromAssetOutput(assetClientOutput)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error get asset when trying to update (refreshing state)",
+			"Could get asset when trying to update (refreshing state): "+state.Id.String()+": "+err.Error(),
+		)
+		return
 	}
 
 	// Set state
@@ -214,22 +156,21 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		return
 	}
 
+	assetInput, err := client.PopulateClientAssetInputForUpdate(assetInCloudApi, plan, "vpc", "aws")
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error hydrating asset for update",
+			"Error hydrating asset for update - id "+assetInCloudApi.Id+": "+err.Error(),
+		)
+		return
+	}
+
 	// request update
 	result, err := r.p.Client.UpdateAsset(
 		assetInCloudApi.Id,
 		assetInCloudApi.Environment.Id,
 		assetInCloudApi.Environment.Organization.Id,
-		cloud_api_client.AssetInput{
-			Asset: fmt.Sprintf(
-				"aws%svpc%s%s%s",
-				DELIMITER,
-				DELIMITER,
-				plan.AssetVersion,
-				DELIMITER,
-			),
-			AssetParameters: assetInCloudApi.CurrentAssetParameters.Data,
-			AssetVersion:    plan.AssetVersion.String(),
-		},
+		*assetInput,
 	)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -239,20 +180,16 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		return
 	}
 
-	name, _ := result.CurrentAssetParameters.Data["name"]
+	stateToSet, err := GenerateResourceFromAssetOutput(result)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error get asset when trying to update (refreshing state)",
+			"Could get asset when trying to update (refreshing state): "+assetInCloudApi.Id+": "+err.Error())
+		return
+	}
 
 	// Set state
-	diags = resp.State.Set(ctx, VPC{
-		AssetBase: common.AssetBase{
-			Id:             types.String{Value: result.Id},
-			EnvironmentId:  types.String{Value: result.Environment.Id},
-			OrganizationId: types.String{Value: result.Environment.Organization.Id},
-		},
-
-		AssetParameters: VPCAssetParameters{
-			Name: types.String{Value: name.(string)},
-		},
-	})
+	diags = resp.State.Set(ctx, *stateToSet)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
