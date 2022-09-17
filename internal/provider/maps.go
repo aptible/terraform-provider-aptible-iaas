@@ -1,16 +1,11 @@
 package provider
 
 import (
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/vpc"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 
-	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/vpc"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/environment"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/organization"
-)
-
-const (
-	DATA_SOURCES_CONTEXT_KEY = "aptible_data_sources"
-	RESOURCES_CONTEXT_KEY    = "aptible_resources"
 )
 
 var (

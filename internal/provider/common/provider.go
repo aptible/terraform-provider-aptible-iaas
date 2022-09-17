@@ -13,10 +13,11 @@ import (
 )
 
 type Provider struct {
-	ProviderRootContext context.Context
-	Configured          bool
-	Client              client.CloudClient
-	Utils               utils.UtilsImpl
+	ResourcesMap   map[string]tfsdk.ResourceType
+	DataSourcesMap map[string]tfsdk.DataSourceType
+	Configured     bool
+	Client         client.CloudClient
+	Utils          utils.UtilsImpl
 }
 
 // GetSchema ...
@@ -137,10 +138,10 @@ func (p *Provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 
 // GetResources - Defines Provider resources
 func (p *Provider) GetResources(ctx context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
-	return p.ProviderRootContext.Value("aptible_resources").(map[string]tfsdk.ResourceType), nil
+	return p.ResourcesMap, nil
 }
 
 // GetDataSources - Defines Provider data sources
 func (p *Provider) GetDataSources(ctx context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
-	return p.ProviderRootContext.Value("aptible_data_sources").(map[string]tfsdk.DataSourceType), nil
+	return p.DataSourcesMap, nil
 }
