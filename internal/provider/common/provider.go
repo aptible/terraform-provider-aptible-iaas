@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	utils2 "github.com/aptible/terraform-provider-aptible-iaas/internal/utils"
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -10,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/utils"
 )
 
 type Provider struct {
@@ -17,7 +17,7 @@ type Provider struct {
 	DataSourcesMap map[string]tfsdk.DataSourceType
 	Configured     bool
 	Client         client.CloudClient
-	Utils          utils2.UtilsImpl
+	Utils          utils.UtilsImpl
 }
 
 // GetSchema ...
@@ -132,7 +132,7 @@ func (p *Provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 	c := client.NewClient(debug, host, token)
 
 	p.Client = c
-	p.Utils = utils2.NewUtils(p.Client)
+	p.Utils = utils.NewUtils(p.Client)
 	p.Configured = true
 }
 
