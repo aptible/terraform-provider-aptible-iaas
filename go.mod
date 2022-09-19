@@ -6,7 +6,7 @@ require (
 	github.com/aptible/cloud-api-clients/clients/go v0.0.0-20220907201222-ccf7b001ed80
 	github.com/hashicorp/terraform-plugin-framework v0.10.0
 	github.com/hashicorp/terraform-plugin-log v0.6.0
-	golang.org/x/exp v0.0.0-20220909182711-5c715a9e8561
+	golang.org/x/exp v0.0.0-20220916125017-b168a2c6b86b
 )
 
 require (
