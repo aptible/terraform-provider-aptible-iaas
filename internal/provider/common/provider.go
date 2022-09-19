@@ -2,14 +2,14 @@ package common
 
 import (
 	"context"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
-	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/utils"
-	"os"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/utils"
 )
 
 type Provider struct {

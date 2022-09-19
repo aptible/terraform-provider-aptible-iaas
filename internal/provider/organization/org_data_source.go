@@ -17,9 +17,7 @@ func (r DataSourceOrgType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diag
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
 			"id": {
-				Type: types.MapType{
-					ElemType: types.StringType,
-				},
+				Type:     types.StringType,
 				Required: true,
 			},
 			"name": {
