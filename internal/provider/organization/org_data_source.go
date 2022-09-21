@@ -47,7 +47,7 @@ func (r dataSourceOrg) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 		return
 	}
 
-	org, err := r.p.Client.FindOrg(config.ID.String())
+	org, err := r.p.Client.FindOrg(config.ID.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error retrieving org",
