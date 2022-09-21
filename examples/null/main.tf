@@ -15,7 +15,7 @@ data "aptible_environment" "env" {
   org_id = data.aptible_organization.org.id
 }
 
-resource "aptible_null_simple" "asset_1" { // MADHU
+resource "aptible_null_simple" "network" {
   environment_id          = data.aptible_environment.env.id
   organization_id         = data.aptible_organization.org.id
 
