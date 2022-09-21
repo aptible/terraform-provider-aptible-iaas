@@ -11,6 +11,7 @@ Whenever we want to interface with the API, we should use this interface.
 */
 type CloudClient interface {
 	ListEnvironments(orgId string) ([]cac.EnvironmentOutput, error)
+	DescribeEnvironment(orgId, envId string) (*cac.EnvironmentOutput, error)
 	CreateEnvironment(orgId string, params cac.EnvironmentInput) (*cac.EnvironmentOutput, error)
 	DestroyEnvironment(orgId, envId string) error
 
@@ -23,9 +24,11 @@ type CloudClient interface {
 	ListAssets(orgId, envId string) ([]cac.AssetOutput, error)
 	DescribeAsset(orgId, envId, assetId string) (*cac.AssetOutput, error)
 	DestroyAsset(orgId, envId, assetID string) error
+	UpdateAsset(assetId string, envId string, orgId string, params cac.AssetInput) (*cac.AssetOutput, error)
 
 	ListOperationsByAsset(orgId, assetId string) ([]cac.OperationOutput, error)
 
 	CreateConnection(orgId, envId, assetId string, params cac.ConnectionInput) (*cac.ConnectionOutput, error)
 	DestroyConnection(orgId, envId, assetId, connectionId string) error
+	GetConnection(orgId, envId, assetId, connectionId string) (*cac.ConnectionOutput, error)
 }

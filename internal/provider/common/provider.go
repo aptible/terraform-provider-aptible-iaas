@@ -1,33 +1,32 @@
-package aptible
+package common
 
 import (
 	"context"
 	"os"
 
-	"github.com/aptible/terraform-provider-aptible-iaas/client"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/utils"
 )
 
-var stderr = os.Stderr
-
-func New() tfsdk.Provider {
-	return &provider{}
+type Provider struct {
+	ResourcesMap   map[string]tfsdk.ResourceType
+	DataSourcesMap map[string]tfsdk.DataSourceType
+	Configured     bool
+	Client         client.CloudClient
+	Utils          utils.UtilsImpl
 }
 
-type provider struct {
-	configured bool
-	client     client.CloudClient
-}
-
-// GetSchema
-func (p *provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+// GetSchema ...
+func (p *Provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
 			"token": {
 				Type:     types.StringType,
-				Optional: false,
+				Required: true,
 			},
 			"host": {
 				Type:     types.StringType,
@@ -41,15 +40,15 @@ func (p *provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics)
 	}, nil
 }
 
-// Provider schema struct
+// providerData schema struct
 type providerData struct {
 	Token types.String `tfsdk:"token"`
 	Host  types.String `tfsdk:"host"`
 	Debug types.Bool   `tfsdk:"debug"`
 }
 
-func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderRequest, resp *tfsdk.ConfigureProviderResponse) {
-	// Retrieve provider data from configuration
+func (p *Provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderRequest, resp *tfsdk.ConfigureProviderResponse) {
+	// Retrieve Provider data from configuration
 	var config providerData
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
@@ -57,12 +56,12 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 		return
 	}
 
-	// User must provide a user to the provider
+	// User must provide a user to the Provider
 	var token string
 	if config.Token.Unknown {
-		// Cannot connect to client with an unknown value
+		// Cannot connect to Client with an unknown value
 		resp.Diagnostics.AddWarning(
-			"Unable to create client",
+			"Unable to create Client",
 			"Cannot use unknown value as username",
 		)
 		return
@@ -85,9 +84,9 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 
 	var debug bool
 	if config.Debug.Unknown {
-		// Cannot connect to client with an unknown value
+		// Cannot connect to Client with an unknown value
 		resp.Diagnostics.AddError(
-			"Unable to create client",
+			"Unable to create Client",
 			"Cannot use unknown value as debug",
 		)
 		return
@@ -107,9 +106,9 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 	// User must specify a host
 	var host string
 	if config.Host.Unknown {
-		// Cannot connect to client with an unknown value
+		// Cannot connect to Client with an unknown value
 		resp.Diagnostics.AddError(
-			"Unable to create client",
+			"Unable to create Client",
 			"Cannot use unknown value as host",
 		)
 		return
@@ -132,18 +131,17 @@ func (p *provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 
 	c := client.NewClient(debug, host, token)
 
-	p.client = c
-	p.configured = true
+	p.Client = c
+	p.Utils = utils.NewUtils(p.Client)
+	p.Configured = true
 }
 
-// GetResources - Defines provider resources
-func (p *provider) GetResources(_ context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
-	return map[string]tfsdk.ResourceType{}, nil
+// GetResources - Defines Provider resources
+func (p *Provider) GetResources(ctx context.Context) (map[string]tfsdk.ResourceType, diag.Diagnostics) {
+	return p.ResourcesMap, nil
 }
 
-// GetDataSources - Defines provider data sources
-func (p *provider) GetDataSources(_ context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
-	return map[string]tfsdk.DataSourceType{
-		"iaas_organizations": dataSourceOrgsType{},
-	}, nil
+// GetDataSources - Defines Provider data sources
+func (p *Provider) GetDataSources(ctx context.Context) (map[string]tfsdk.DataSourceType, diag.Diagnostics) {
+	return p.DataSourcesMap, nil
 }

@@ -1,10 +1,12 @@
-TEST?=$$(go list ./... | grep -v 'vendor')
-HOSTNAME=aptible.com
-NAMESPACE=edu
-NAME=aptible-iaas
-BINARY=terraform-provider-${NAME}
-VERSION=0.3.2
-OS_ARCH=darwin_amd64
+TEST? = $$(go list ./... | grep -v 'vendor')
+HOSTNAME = aptible.com
+NAMESPACE = aptible
+NAME = aptible-iaas
+BINARY = terraform-provider-${NAME}
+VERSION = 0.0.0+local
+TARGET = darwin_amd64
+LOCAL_ARCH ?= amd64
+LOCAL_TARGET ?= darwin_${LOCAL_ARCH}
 
 default: install
 
@@ -24,6 +26,17 @@ release:
 	GOOS=solaris GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_solaris_amd64
 	GOOS=windows GOARCH=386 go build -o ./bin/${BINARY}_${VERSION}_windows_386
 	GOOS=windows GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_windows_amd64
+
+
+build-local:
+	GOOS=darwin GOARCH=${LOCAL_ARCH} go build -o ./bin/${BINARY}_${VERSION}_${LOCAL_TARGET}
+
+local-install: build-local
+	# delete existing if it's already been saved
+	rm -rf "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}" || true
+	mkdir -p "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/$(LOCAL_TARGET)"
+	cp ./bin/${BINARY}_${VERSION}_${LOCAL_TARGET} "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/$(LOCAL_TARGET)"
+	@echo "Installed as provider aptible.com/aptible/aptible-iaas version 0.0.0+local"
 
 install: build
 	mkdir -p ~/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS_ARCH}
