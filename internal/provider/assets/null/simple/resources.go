@@ -2,7 +2,7 @@ package simple
 
 import (
 	"context"
-
+	"encoding/json"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -48,11 +48,27 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 
 	tflog.Info(ctx, "Creating asset", map[string]interface{}{"asset": asset})
 
-	assetInput, _ := client.PopulateClientAssetInputForCreate(asset, "vpc", "aws")
+	rawData, err := json.Marshal(asset)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error marshalling vpc plan",
+			"Could not marshal vpc plan, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	assetInput, err := client.PopulateClientAssetInputForCreate(ctx, rawData, "vpc", "aws", asset.AssetVersion.Value)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error populating asset input for create",
+			"Could not create input for creating asset: "+err.Error(),
+		)
+		return
+	}
 
 	createdAsset, err := r.p.Client.CreateAsset(
-		asset.OrganizationId.String(),
-		asset.EnvironmentId.String(),
+		asset.OrganizationId.Value,
+		asset.EnvironmentId.Value,
 		*assetInput,
 	)
 	if err != nil {
@@ -75,7 +91,7 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating asset",
-			"Error when creating asset"+asset.Id.String()+": "+err.Error(),
+			"Error when creating asset"+asset.Id.Value+": "+err.Error(),
 		)
 		return
 	}
@@ -88,13 +104,13 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 
 	if err := r.p.Utils.WaitForAssetStatusInOperationCompleteState(
 		ctx,
-		result.OrganizationId.String(),
-		result.EnvironmentId.String(),
-		result.Id.String(),
+		result.OrganizationId.Value,
+		result.EnvironmentId.Value,
+		result.Id.Value,
 	); err != nil {
 		resp.Diagnostics.AddError(
 			"Error waiting for asset on create",
-			"Error when waiting for asset id"+result.Id.String()+": "+err.Error(),
+			"Error when waiting for asset id"+result.Id.Value+": "+err.Error(),
 		)
 		return
 	}
@@ -110,11 +126,11 @@ func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 		return
 	}
 
-	assetClientOutput, err := r.p.Client.DescribeAsset(state.OrganizationId.String(), state.EnvironmentId.String(), state.Id.String())
+	assetClientOutput, err := r.p.Client.DescribeAsset(state.OrganizationId.Value, state.EnvironmentId.Value, state.Id.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading asset",
-			"Could not read ID "+state.Id.String()+": "+err.Error(),
+			"Could not read ID "+state.Id.Value+": "+err.Error(),
 		)
 		return
 	}
@@ -123,7 +139,7 @@ func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error get asset when trying to update (refreshing state)",
-			"Could get asset when trying to update (refreshing state): "+state.Id.String()+": "+err.Error(),
+			"Could get asset when trying to update (refreshing state): "+state.Id.Value+": "+err.Error(),
 		)
 		return
 	}
@@ -146,7 +162,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 	}
 
 	// Get current state and compare against remote
-	assetInCloudApi, err := r.p.Client.DescribeAsset(plan.OrganizationId.String(), plan.EnvironmentId.String(), plan.Id.String())
+	assetInCloudApi, err := r.p.Client.DescribeAsset(plan.OrganizationId.Value, plan.EnvironmentId.Value, plan.Id.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error update asset",
@@ -155,7 +171,16 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		return
 	}
 
-	assetInput, err := client.PopulateClientAssetInputForUpdate(assetInCloudApi, plan, "vpc", "aws")
+	rawData, err := json.Marshal(assetInCloudApi)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error marshalling vpc plan",
+			"Could not marshal vpc plan, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	assetInput, err := client.PopulateClientAssetInputForUpdate(ctx, assetInCloudApi, rawData, "vpc", "aws", plan.AssetVersion.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error hydrating asset for update",
@@ -218,24 +243,24 @@ func (r resourceAsset) Delete(ctx context.Context, req tfsdk.DeleteResourceReque
 	}
 
 	// Delete asset by calling API
-	err := r.p.Client.DestroyAsset(state.OrganizationId.String(), state.EnvironmentId.String(), state.Id.String())
+	err := r.p.Client.DestroyAsset(state.OrganizationId.Value, state.EnvironmentId.Value, state.Id.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting asset",
-			"Could not delete asset id "+state.Id.String()+": "+err.Error(),
+			"Could not delete asset id "+state.Id.Value+": "+err.Error(),
 		)
 		return
 	}
 
 	if err := r.p.Utils.WaitForAssetStatusInOperationCompleteState(
 		ctx,
-		state.OrganizationId.String(),
-		state.EnvironmentId.String(),
-		state.Id.String(),
+		state.OrganizationId.Value,
+		state.EnvironmentId.Value,
+		state.Id.Value,
 	); err != nil {
 		resp.Diagnostics.AddError(
 			"Error waiting for asset on delete",
-			"Error when waiting for asset id"+state.Id.String()+": "+err.Error(),
+			"Error when waiting for asset id"+state.Id.Value+": "+err.Error(),
 		)
 		return
 	}

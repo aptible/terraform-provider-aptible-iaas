@@ -70,15 +70,15 @@ func (r resourceConnection) Read(ctx context.Context, req tfsdk.ReadResourceRequ
 	}
 
 	connectionClientOutput, err := r.p.client.GetConnection(
-		state.OrganizationId.String(),
-		state.EnvironmentId.String(),
-		state.AssetId.String(),
-		state.Id.String(),
+		state.OrganizationId.Value,
+		state.EnvironmentId.Value,
+		state.AssetId.Value,
+		state.Id.Value,
 	)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading connection",
-			"Could not read ID "+state.Id.String()+": "+err.Error(),
+			"Could not read ID "+state.Id.Value+": "+err.Error(),
 		)
 		return
 	}
