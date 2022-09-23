@@ -26,14 +26,10 @@ func (p *Provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics)
 		Attributes: map[string]tfsdk.Attribute{
 			"token": {
 				Type:     types.StringType,
-				Required: true,
+				Optional: true,
 			},
 			"host": {
 				Type:     types.StringType,
-				Optional: true,
-			},
-			"debug": {
-				Type:     types.BoolType,
 				Optional: true,
 			},
 		},
@@ -44,7 +40,6 @@ func (p *Provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics)
 type providerData struct {
 	Token types.String `tfsdk:"token"`
 	Host  types.String `tfsdk:"host"`
-	Debug types.Bool   `tfsdk:"debug"`
 }
 
 func (p *Provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderRequest, resp *tfsdk.ConfigureProviderResponse) {
@@ -62,7 +57,7 @@ func (p *Provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 		// Cannot connect to Client with an unknown value
 		resp.Diagnostics.AddWarning(
 			"Unable to create Client",
-			"Cannot use unknown value as username",
+			"Cannot use unknown value as token",
 		)
 		return
 	}
@@ -76,31 +71,10 @@ func (p *Provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 	if token == "" {
 		// Error vs warning - empty value must stop execution
 		resp.Diagnostics.AddError(
-			"Unable to find username",
-			"Username cannot be an empty string",
+			"Unable to find token",
+			"Token cannot be an empty string",
 		)
 		return
-	}
-
-	var debug bool
-	if config.Debug.Unknown {
-		// Cannot connect to Client with an unknown value
-		resp.Diagnostics.AddError(
-			"Unable to create Client",
-			"Cannot use unknown value as debug",
-		)
-		return
-	}
-
-	if config.Debug.Null {
-		debugStr := os.Getenv("APTIBLE_DEBUG")
-		if debugStr == "1" {
-			debug = true
-		} else {
-			debug = false
-		}
-	} else {
-		debug = config.Debug.Value
 	}
 
 	// User must specify a host
@@ -129,7 +103,7 @@ func (p *Provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 		return
 	}
 
-	c := client.NewClient(debug, host, token)
+	c := client.NewClient(false, host, token)
 
 	p.Client = c
 	p.Utils = utils.NewUtils(p.Client)
