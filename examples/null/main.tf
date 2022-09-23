@@ -6,6 +6,10 @@ terraform {
   }
 }
 
+provider "aptible" {
+  host = "cloud-api.cloud.aptible.com"
+}
+
 data "aptible_organization" "org" {
   id = "2253ae98-d65a-4180-aceb-8419b7416677"
 }
