@@ -103,7 +103,7 @@ func (p *Provider) Configure(ctx context.Context, req tfsdk.ConfigureProviderReq
 		return
 	}
 
-	c := client.NewClient(false, host, token)
+	c := client.NewClient(true, host, token)
 
 	p.Client = c
 	p.Utils = utils.NewUtils(p.Client)

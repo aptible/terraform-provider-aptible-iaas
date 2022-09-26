@@ -8,6 +8,7 @@ import (
 	"net/http/httputil"
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // client - internal cac struct used only for this service with some common configuration
@@ -39,57 +40,56 @@ func NewClient(debug bool, host string, token string) CloudClient {
 	}
 }
 
-func (c *Client) HandleResponse(r *http.Response) {
+func (c *Client) HandleResponse(tfctx context.Context, r *http.Response) {
 	if r == nil {
 		fmt.Printf("The HTTP response is nil which means the request was never made.  Are you sure your API domain is set properly? (%s)\n", c.apiClient.GetConfig().Host)
 		return
 	}
-	c.PrintResponse(r)
+	c.PrintResponse(tfctx, r)
 }
 
-func (c *Client) PrintResponse(r *http.Response) {
+func (c *Client) PrintResponse(tfctx context.Context, r *http.Response) {
 	if !c.debug {
 		return
 	}
 
-	log.Println("--- DEBUG ---")
 	reqDump, err := httputil.DumpRequestOut(r.Request, false)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	log.Printf("REQUEST:\n%s", string(reqDump))
+	tflog.Debug(tfctx, "REQUEST:\n%s", map[string]interface{}{"out": string(reqDump)})
 
 	respDump, err := httputil.DumpResponse(r, true)
 	if err != nil {
 		log.Println(err)
 	}
 
-	log.Printf("RESPONSE:\n%s\n", string(respDump))
+	tflog.Debug(tfctx, "RESPONSE:\n%s\n", map[string]interface{}{"out": string(respDump)})
 }
 
-func (c *Client) ListEnvironments(orgId string) ([]cac.EnvironmentOutput, error) {
+func (c *Client) ListEnvironments(tfctx context.Context, orgId string) ([]cac.EnvironmentOutput, error) {
 	request := c.
 		apiClient.
 		OrganizationsApi.
 		OrganizationGetEnvironments(c.ctx, orgId)
 	env, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return env, err
 }
 
-func (c *Client) CreateEnvironment(orgId string, params cac.EnvironmentInput) (*cac.EnvironmentOutput, error) {
+func (c *Client) CreateEnvironment(tfctx context.Context, orgId string, params cac.EnvironmentInput) (*cac.EnvironmentOutput, error) {
 	request := c.
 		apiClient.
 		EnvironmentsApi.
 		EnvironmentCreate(c.ctx, orgId).
 		EnvironmentInput(params)
 	env, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return env, err
 }
 
-func (c *Client) DescribeEnvironment(orgId string, envId string) (*cac.EnvironmentOutput, error) {
+func (c *Client) DescribeEnvironment(tfctx context.Context, orgId string, envId string) (*cac.EnvironmentOutput, error) {
 	env, r, err := c.
 		apiClient.
 		EnvironmentsApi.
@@ -99,11 +99,11 @@ func (c *Client) DescribeEnvironment(orgId string, envId string) (*cac.Environme
 			orgId,
 		).
 		Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return env, err
 }
 
-func (c *Client) DestroyEnvironment(orgId string, envId string) error {
+func (c *Client) DestroyEnvironment(tfctx context.Context, orgId string, envId string) error {
 	_, r, err := c.
 		apiClient.
 		EnvironmentsApi.
@@ -113,32 +113,32 @@ func (c *Client) DestroyEnvironment(orgId string, envId string) error {
 			orgId,
 		).
 		Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return err
 }
 
-func (c *Client) CreateOrg(orgId string, params cac.OrganizationInput) (*cac.OrganizationOutput, error) {
+func (c *Client) CreateOrg(tfctx context.Context, orgId string, params cac.OrganizationInput) (*cac.OrganizationOutput, error) {
 	request := c.
 		apiClient.
 		OrganizationsApi.
 		OrganizationUpdate(c.ctx, orgId).
 		OrganizationInput(params)
 	org, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return org, err
 }
 
-func (c *Client) FindOrg(orgId string) (*cac.OrganizationOutput, error) {
+func (c *Client) FindOrg(tfctx context.Context, orgId string) (*cac.OrganizationOutput, error) {
 	org, r, err := c.
 		apiClient.
 		OrganizationsApi.
 		OrganizationGet(c.ctx, orgId).
 		Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return org, err
 }
 
-func (c *Client) CreateAsset(orgId string, envId string, params cac.AssetInput) (*cac.AssetOutput, error) {
+func (c *Client) CreateAsset(tfctx context.Context, orgId string, envId string, params cac.AssetInput) (*cac.AssetOutput, error) {
 	request := c.
 		apiClient.
 		AssetsApi.
@@ -149,11 +149,11 @@ func (c *Client) CreateAsset(orgId string, envId string, params cac.AssetInput) 
 		).
 		AssetInput(params)
 	asset, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return asset, err
 }
 
-func (c *Client) DestroyAsset(orgId string, envId string, assetId string) error {
+func (c *Client) DestroyAsset(tfctx context.Context, orgId string, envId string, assetId string) error {
 	request := c.
 		apiClient.
 		AssetsApi.
@@ -164,33 +164,33 @@ func (c *Client) DestroyAsset(orgId string, envId string, assetId string) error 
 			orgId,
 		)
 	_, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return err
 }
 
-func (c *Client) UpdateAsset(assetId string, envId string, orgId string, params cac.AssetInput) (*cac.AssetOutput, error) {
+func (c *Client) UpdateAsset(tfctx context.Context, assetId string, envId string, orgId string, params cac.AssetInput) (*cac.AssetOutput, error) {
 	request := c.
 		apiClient.
 		AssetsApi.
 		AssetUpdate(c.ctx, assetId, envId, orgId).
 		AssetInput(params)
 	asset, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return asset, err
 }
 
-func (c *Client) ListAssets(orgId string, envId string) ([]cac.AssetOutput, error) {
+func (c *Client) ListAssets(tfctx context.Context, orgId string, envId string) ([]cac.AssetOutput, error) {
 	request := c.apiClient.EnvironmentsApi.EnvironmentGetAssets(
 		c.ctx,
 		envId,
 		orgId,
 	)
 	assets, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return assets, err
 }
 
-func (c *Client) DescribeAsset(orgId string, envId string, assetId string) (*cac.AssetOutput, error) {
+func (c *Client) DescribeAsset(tfctx context.Context, orgId string, envId string, assetId string) (*cac.AssetOutput, error) {
 	request := c.
 		apiClient.
 		AssetsApi.
@@ -201,29 +201,29 @@ func (c *Client) DescribeAsset(orgId string, envId string, assetId string) (*cac
 			orgId,
 		)
 	asset, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return asset, err
 }
 
-func (c *Client) ListOrgs() ([]cac.OrganizationOutput, error) {
+func (c *Client) ListOrgs(tfctx context.Context) ([]cac.OrganizationOutput, error) {
 	request := c.apiClient.OrganizationsApi.OrganizationList(c.ctx)
 	orgs, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return orgs, err
 }
 
-func (c *Client) ListOperationsByAsset(orgId string, assetId string) ([]cac.OperationOutput, error) {
+func (c *Client) ListOperationsByAsset(tfctx context.Context, orgId string, assetId string) ([]cac.OperationOutput, error) {
 	request := c.
 		apiClient.
 		OrganizationsApi.
 		OrganizationGetOperations(c.ctx, orgId).
 		AssetId(assetId)
 	ops, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return ops, err
 }
 
-func (c *Client) ListAssetBundles(orgId string, envId string) ([]cac.AssetBundle, error) {
+func (c *Client) ListAssetBundles(tfctx context.Context, orgId string, envId string) ([]cac.AssetBundle, error) {
 	request := c.
 		apiClient.
 		EnvironmentsApi.
@@ -233,11 +233,11 @@ func (c *Client) ListAssetBundles(orgId string, envId string) ([]cac.AssetBundle
 			orgId,
 		)
 	bundles, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return bundles, err
 }
 
-func (c *Client) GetConnection(orgId, envId, assetId, connectionId string) (*cac.ConnectionOutput, error) {
+func (c *Client) GetConnection(tfctx context.Context, orgId, envId, assetId, connectionId string) (*cac.ConnectionOutput, error) {
 	request := c.
 		apiClient.
 		ConnectionsApi.
@@ -249,11 +249,11 @@ func (c *Client) GetConnection(orgId, envId, assetId, connectionId string) (*cac
 			orgId,
 		)
 	conn, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return conn, err
 }
 
-func (c *Client) CreateConnection(orgId, envId, assetId string, params cac.ConnectionInput) (*cac.ConnectionOutput, error) {
+func (c *Client) CreateConnection(tfctx context.Context, orgId, envId, assetId string, params cac.ConnectionInput) (*cac.ConnectionOutput, error) {
 	request := c.
 		apiClient.
 		ConnectionsApi.
@@ -265,11 +265,11 @@ func (c *Client) CreateConnection(orgId, envId, assetId string, params cac.Conne
 		).
 		ConnectionInput(params)
 	conn, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return conn, err
 }
 
-func (c *Client) DestroyConnection(orgId, envId, assetId, connectionId string) error {
+func (c *Client) DestroyConnection(tfctx context.Context, orgId, envId, assetId, connectionId string) error {
 	request := c.
 		apiClient.
 		ConnectionsApi.
@@ -281,6 +281,6 @@ func (c *Client) DestroyConnection(orgId, envId, assetId, connectionId string) e
 			orgId,
 		)
 	_, r, err := request.Execute()
-	c.HandleResponse(r)
+	c.HandleResponse(tfctx, r)
 	return err
 }
