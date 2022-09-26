@@ -60,6 +60,7 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 
 	assetInput, _ := client.PopulateClientAssetInputForCreate(ctx, rawData, "vpc", "aws", asset.AssetVersion.Value)
 	createdAsset, err := r.p.Client.CreateAsset(
+		ctx,
 		asset.OrganizationId.String(),
 		asset.EnvironmentId.String(),
 		*assetInput,
@@ -120,7 +121,7 @@ func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 		return
 	}
 
-	assetClientOutput, err := r.p.Client.DescribeAsset(state.OrganizationId.String(), state.EnvironmentId.String(), state.Id.String())
+	assetClientOutput, err := r.p.Client.DescribeAsset(ctx, state.OrganizationId.String(), state.EnvironmentId.String(), state.Id.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading asset",
@@ -156,7 +157,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 	}
 
 	// Get current state and compare against remote
-	assetInCloudApi, err := r.p.Client.DescribeAsset(plan.OrganizationId.String(), plan.EnvironmentId.String(), plan.Id.String())
+	assetInCloudApi, err := r.p.Client.DescribeAsset(ctx, plan.OrganizationId.String(), plan.EnvironmentId.String(), plan.Id.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error update asset",
@@ -185,6 +186,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 
 	// request update
 	result, err := r.p.Client.UpdateAsset(
+		ctx,
 		assetInCloudApi.Id,
 		assetInCloudApi.Environment.Id,
 		assetInCloudApi.Environment.Organization.Id,
@@ -237,7 +239,7 @@ func (r resourceAsset) Delete(ctx context.Context, req tfsdk.DeleteResourceReque
 	}
 
 	// Delete asset by calling API
-	err := r.p.Client.DestroyAsset(state.OrganizationId.String(), state.EnvironmentId.String(), state.Id.String())
+	err := r.p.Client.DestroyAsset(ctx, state.OrganizationId.String(), state.EnvironmentId.String(), state.Id.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting asset",

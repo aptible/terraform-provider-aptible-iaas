@@ -50,7 +50,7 @@ func (u Utils) WaitForAssetStatusInOperationCompleteState(ctx context.Context, o
 				})
 			return ErrorTimeOutOnAssetStatus
 		}
-		asset, err := u.client.DescribeAsset(orgId, envId, id)
+		asset, err := u.client.DescribeAsset(ctx, orgId, envId, id)
 		if err != nil {
 			return err
 		}

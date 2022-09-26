@@ -50,7 +50,7 @@ func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest
 		return
 	}
 
-	env, err := r.p.Client.DescribeEnvironment(config.OrgID.Value, config.ID.Value)
+	env, err := r.p.Client.DescribeEnvironment(ctx, config.OrgID.Value, config.ID.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error retrieving environments",
