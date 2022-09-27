@@ -30,6 +30,17 @@ var TOP_LEVEL_KEYS = []string{
 	"timestamp",
 }
 
+func CompileAsset(provider, name, ver string) string {
+	return fmt.Sprintf(
+		"%s%s%s%s%s",
+		provider,
+		DELIMITER,
+		name,
+		DELIMITER,
+		ver,
+	)
+}
+
 /**
 name="map[Null:false Unknown:false Value:my_null]" tf_resource_type=aptible_null_simple tf_rpc=ApplyResourceChange asset_type="map[Null:false Unknown:false Value:simple]" @caller=/Users/madhu/work/terraform-provider-aptible-iaas/internal/client/model_transformers.go:40 @module=aptible_iaas asset_version="map[Null:false Unknown:false Value:latest]" id="map[Null:false Unknown:true Value:]" organization_id="map[Null:false Unknown:false Value:2253ae98-d65a-4180-aceb-8419b7416677]" status="map[Null:false Unknown:true Value:]" tf_provider_addr=aptible.com/aptible/aptible-iaas tf_req_id=e6b2222c-24d2-84fe-2a29-24384c2cead0 asset_platform="map[Null:false Unknown:false Value:null]" environment_id="map[Null:false Unknown:false Value:238930f4-0750-4f55-b43c-e1a11c437e23]" timestamp=2022-09-21T18:31:09.519-0400
 2022-09-21T18:31:09.519-0400 [INFO]  provider.terraform-provider-aptible-iaas_0.0.0+local_darwin_arm64: Using these asset para
@@ -64,14 +75,7 @@ func PopulateClientAssetInputForCreate(ctx context.Context, input []byte, assetN
 	tflog.Info(ctx, "Using these asset parameters", assetParameters)
 
 	return &cloud_api_client.AssetInput{
-		Asset: fmt.Sprintf(
-			"%s%s%s%s%s",
-			cloud,
-			DELIMITER,
-			assetName,
-			DELIMITER,
-			version,
-		),
+		Asset:           CompileAsset(cloud, assetName, version),
 		AssetVersion:    version,
 		AssetParameters: assetParameters,
 	}, nil
