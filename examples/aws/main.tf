@@ -10,61 +10,93 @@ provider "aptible" {
   host = "cloud-api.cloud.aptible.com"
 }
 
+variable "organization_id" {
+  type = string
+}
+
+variable "environment_id" {
+  type = string
+}
+
 data "aptible_organization" "org" {
-  id = "2253ae98-d65a-4180-aceb-8419b7416677"
+  # id = "2253ae98-d65a-4180-aceb-8419b7416677"
+  id = var.organization_id
 }
 
 data "aptible_environment" "env" {
-  id = "238930f4-0750-4f55-b43c-e1a11c437e23"
+  # id = "238930f4-0750-4f55-b43c-e1a11c437e23"
+  id = var.environment_id
   org_id = data.aptible_organization.org.id
 }
 
-resource "aptible_aws_vpc" "network" { // MADHU
-  environment_id          = data.aptible_environment.env.id // TODO - make this a resource
-  organization_id         = data.aptible_organization.org.id // TODO - make this a resource
-
-  asset_type = "vpc"
-  asset_platform = "aws"
-  asset_version  = "latest"
-
-  name                   = "my_vpc"
-  #  cidr_block             = "10.43.0.0/16"
-  #  max_availability_zones = 3
-  #  nat_type               = "instance"
+resource "aptible_aws_vpc" "network" {
+  environment_id  = data.aptible_environment.env.id
+  organization_id = data.aptible_organization.org.id
+  asset_version   = "latest"
+  name            = "my_vpc"
 }
 
-#resource "aptible_aws_rds" "db" { // MADHU
-#  environment_id          = data.aptible_environment.env.id // TODO - make this a resource
-#  organization_id         = data.aptible_organization.org.id // TODO - make this a resource
-#
-#  asset_type = "rds"
-#  asset_platform = "aws"
-#  asset_version  = "latest"
-#
-#  vpc_name       = aptible_aws_vpc.network.name
-#  name           = "prod_database"
-#  engine         = "mysql"
-#  engine_version = "5.7"
-#  pit_identifier = "super_unique_point_in_time_identifier"
-#  tags = {}
-#}
+resource "aptible_aws_rds" "db" {
+  environment_id = data.aptible_environment.env.id
+  organization_id = data.aptible_organization.org.id
+  vpc_name = aptible_aws_vpc.network.name
 
-#resource "aptible_aws_ecs" "app" { // MADHU
-#  environment_id          = data.aptible_environment.env.id
-#  organization_id         = data.aptible_organization.org.id
+  asset_version  = "latest"
+  name = "app_redis"
+  engine = "postgres"
+  version = "13"
+}
+
+#resource "aptible_aws_redis" "cache" {
+#  environment_id = data.aptible_environment.env.id
+#  organization_id = data.aptible_organization.org.id
+#  vpc_name = aptible_aws_vpc.network.name
 #
-#  asset_type = "ecs"
-#  asset_platform = "aws"
 #  asset_version  = "latest"
-#
-#  vpc_name       = aptible_aws_vpc.network.name
-#  name           = "prod_ecs"
-#  tags = {}
+#  name = "app_redis"
 #}
 #
-#resource "aptible_resource_connection" "database_to_ecs" {
-#  name = "ecs_to_rds"
-#  description = "Allow ECS to Access RDS Database"
-#  incoming_asset_connection = aptible_asset.db.id
-#  outgoing_asset_connection = aptible_asset.app.id
+#resource "aptible_aws_acm" "cert" {
+#  environment_id = data.aptible_environment.env.id
+#  organization_id = data.aptible_organization.org.id
+#
+#  asset_version  = "latest"
+#  fqdn = "www.example.com"
+#  validation_method = "EMAIL"
+#}
+#
+#resource "aptible_aws_ecs_web" "web" {
+#  environment_id = data.aptible_environment.env.id
+#  organization_id = data.aptible_organization.org.id
+#  vpc_name = aptible_asset.network.name
+#
+#  asset_version  = "latest"
+#  name = "my_app"
+#  is_public = true
+#  container_name = "my_app"
+#  container_image = "quay.io/aptible/deploy-demo-app"
+#  container_port = 5000
+#  lb_cert_arn = jsondecode(aptible_asset.cert.outputs).arn
+#  environment_secrets = {
+#    DATABASE_URL = {
+#      secret_arn = "" // jsondecode(aptible_asset.rds.outputs).uri_arn
+#    }
+#    REDIS_URL = {
+#      secret_arn = ""
+#    }
+#  }
+#}
+#
+#resource "aptible_connection" "web_to_rds" {
+#  inbound_id = aptible_aws_ecs_web.web.id
+#  outbound_id = aptible_aws_rds.cache.id
+#  inbound_label = "web"
+#  outbound_label = "rds"
+#}
+#
+#resource "aptible_connection" "web_to_redis" {
+#  inbound_id = aptible_aws_ecs_web.web.id
+#  outbound_id = aptible_aws_redis.db.id
+#  inbound_label = "web"
+#  outbount_label = "redis"
 #}
