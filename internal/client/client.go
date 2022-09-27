@@ -184,9 +184,7 @@ func (c *Client) DestroyAsset(tfctx context.Context, orgId string, envId string,
 }
 
 func (c *Client) UpdateAsset(tfctx context.Context, assetId string, envId string, orgId string, params cac.AssetInput) (*cac.AssetOutput, error) {
-	request := c.
-		apiClient.
-		AssetsApi.
+	request := c.apiClient.AssetsApi.
 		AssetUpdate(c.ctx, assetId, envId, orgId).
 		AssetInput(params)
 	asset, r, err := request.Execute()
@@ -206,9 +204,7 @@ func (c *Client) ListAssets(tfctx context.Context, orgId string, envId string) (
 }
 
 func (c *Client) DescribeAsset(tfctx context.Context, orgId string, envId string, assetId string) (*cac.AssetOutput, error) {
-	request := c.
-		apiClient.
-		AssetsApi.
+	request := c.apiClient.AssetsApi.
 		AssetGet(
 			c.ctx,
 			assetId,
