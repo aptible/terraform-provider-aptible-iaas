@@ -1,4 +1,4 @@
-package vpc
+package rds
 
 import (
 	"context"
@@ -40,20 +40,23 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 		return
 	}
 
-	var plan VPC
+	var plan RDS
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	tflog.Info(ctx, "Creating asset", map[string]interface{}{"asset": plan})
+	tflog.Info(ctx, "Creating asset", map[string]interface{}{"plan": plan})
 
 	assetInput := cac.AssetInput{
-		Asset:        client.CompileAsset("aws", "vpc", plan.AssetVersion.Value),
+		Asset:        client.CompileAsset("aws", "rds", plan.AssetVersion.Value),
 		AssetVersion: plan.AssetVersion.Value,
 		AssetParameters: map[string]interface{}{
-			"name": plan.Name.Value,
+			"vpc_name":       plan.VpcName.Value,
+			"name":           plan.Name.Value,
+			"engine":         plan.Engine.Value,
+			"engine_version": plan.EngineVersion.Value,
 		},
 	}
 	createdAsset, err := r.p.Client.CreateAsset(
@@ -111,7 +114,7 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 // Read resource information
 func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, resp *tfsdk.ReadResourceResponse) {
 	// Get current state
-	var state VPC
+	var state RDS
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -146,7 +149,7 @@ func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 
 func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceRequest, resp *tfsdk.UpdateResourceResponse) {
 	// Get plan values
-	var plan VPC
+	var plan RDS
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -154,7 +157,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 	}
 
 	// Get plan values
-	var state VPC
+	var state RDS
 	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -177,10 +180,13 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 	}
 
 	assetInput := cac.AssetInput{
-		Asset:        client.CompileAsset("aws", "vpc", plan.AssetVersion.Value),
+		Asset:        client.CompileAsset("aws", "rds", plan.AssetVersion.Value),
 		AssetVersion: plan.AssetVersion.Value,
 		AssetParameters: map[string]interface{}{
-			"name": plan.Name.Value,
+			"vpc_name":       plan.VpcName.Value,
+			"name":           plan.Name.Value,
+			"engine":         plan.Engine.Value,
+			"engine_version": plan.EngineVersion.Value,
 		},
 	}
 
@@ -231,7 +237,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 
 // Delete resource
 func (r resourceAsset) Delete(ctx context.Context, req tfsdk.DeleteResourceRequest, resp *tfsdk.DeleteResourceResponse) {
-	var state VPC
+	var state RDS
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
