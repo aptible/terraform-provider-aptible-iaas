@@ -2,8 +2,8 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httputil"
 
@@ -40,6 +40,20 @@ func NewClient(debug bool, host string, token string) CloudClient {
 	}
 }
 
+func (c *Client) PrintRequestParams(tfctx context.Context, params interface{}) {
+	if !c.debug {
+		return
+	}
+
+	out, err := json.Marshal(params)
+	if err != nil {
+		tflog.Error(tfctx, err.Error())
+		return
+	}
+
+	tflog.Debug(tfctx, "REQUEST PARAMS", map[string]interface{}{"params": string(out)})
+}
+
 func (c *Client) HandleResponse(tfctx context.Context, r *http.Response) {
 	if r == nil {
 		fmt.Printf("The HTTP response is nil which means the request was never made.  Are you sure your API domain is set properly? (%s)\n", c.apiClient.GetConfig().Host)
@@ -55,17 +69,17 @@ func (c *Client) PrintResponse(tfctx context.Context, r *http.Response) {
 
 	reqDump, err := httputil.DumpRequestOut(r.Request, false)
 	if err != nil {
-		fmt.Println(err)
+		tflog.Error(tfctx, err.Error())
 	}
 
-	tflog.Debug(tfctx, "REQUEST:\n%s", map[string]interface{}{"out": string(reqDump)})
+	tflog.Debug(tfctx, "REQUEST", map[string]interface{}{"out": string(reqDump)})
 
 	respDump, err := httputil.DumpResponse(r, true)
 	if err != nil {
-		log.Println(err)
+		tflog.Error(tfctx, err.Error())
 	}
 
-	tflog.Debug(tfctx, "RESPONSE:\n%s\n", map[string]interface{}{"out": string(respDump)})
+	tflog.Debug(tfctx, "RESPONSE", map[string]interface{}{"out": string(respDump)})
 }
 
 func (c *Client) ListEnvironments(tfctx context.Context, orgId string) ([]cac.EnvironmentOutput, error) {
@@ -139,17 +153,18 @@ func (c *Client) FindOrg(tfctx context.Context, orgId string) (*cac.Organization
 }
 
 func (c *Client) CreateAsset(tfctx context.Context, orgId string, envId string, params cac.AssetInput) (*cac.AssetOutput, error) {
-	request := c.
-		apiClient.
-		AssetsApi.
+	c.PrintRequestParams(tfctx, params)
+
+	request := c.apiClient.AssetsApi.
 		AssetCreate(
 			c.ctx,
 			envId,
 			orgId,
-		).
-		AssetInput(params)
+		).AssetInput(params)
 	asset, r, err := request.Execute()
+
 	c.HandleResponse(tfctx, r)
+
 	return asset, err
 }
 
