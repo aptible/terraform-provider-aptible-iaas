@@ -2,7 +2,6 @@ package vpc
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -154,8 +153,21 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		return
 	}
 
+	// Get plan values
+	var state VPC
+	diags = req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Get current state and compare against remote
-	assetInCloudApi, err := r.p.Client.DescribeAsset(ctx, plan.OrganizationId.Value, plan.EnvironmentId.Value, plan.Id.Value)
+	assetInCloudApi, err := r.p.Client.DescribeAsset(
+		ctx,
+		plan.OrganizationId.Value,
+		plan.EnvironmentId.Value,
+		state.Id.Value,
+	)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error update asset",
@@ -164,22 +176,12 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		return
 	}
 
-	rawData, err := json.Marshal(plan)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error marshalling asset",
-			"Could not marshal asset, unexpected error: "+err.Error(),
-		)
-		return
-	}
-
-	assetInput, err := client.PopulateClientAssetInputForUpdate(ctx, assetInCloudApi, rawData, "vpc", "aws", plan.AssetVersion.Value)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error hydrating asset for update",
-			"Error hydrating asset for update - id "+assetInCloudApi.Id+": "+err.Error(),
-		)
-		return
+	assetInput := cac.AssetInput{
+		Asset:        client.CompileAsset("aws", "vpc", "latest"),
+		AssetVersion: "latest",
+		AssetParameters: map[string]interface{}{
+			"name": plan.Name.Value,
+		},
 	}
 
 	// request update
@@ -188,7 +190,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		assetInCloudApi.Id,
 		assetInCloudApi.Environment.Id,
 		assetInCloudApi.Environment.Organization.Id,
-		*assetInput,
+		assetInput,
 	)
 	if err != nil {
 		resp.Diagnostics.AddError(
