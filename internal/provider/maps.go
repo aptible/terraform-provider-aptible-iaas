@@ -3,6 +3,7 @@ package provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/rds"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/vpc"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/null/simple"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/environment"
@@ -18,6 +19,7 @@ var (
 	ResourcesMap = map[string]tfsdk.ResourceType{
 		// aws resources
 		"aptible_aws_vpc": vpc.ResourceAssetType{},
+		"aptible_aws_rds": rds.ResourceAssetType{},
 		// null resources
 		"aptible_null_simple": simple.ResourceAssetType{},
 	}

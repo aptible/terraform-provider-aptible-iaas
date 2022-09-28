@@ -12,19 +12,19 @@ provider "aptible" {
 
 variable "organization_id" {
   type = string
+  default = "2253ae98-d65a-4180-aceb-8419b7416677"
 }
 
 variable "environment_id" {
   type = string
+  default = "238930f4-0750-4f55-b43c-e1a11c437e23"
 }
 
 data "aptible_organization" "org" {
-  # id = "2253ae98-d65a-4180-aceb-8419b7416677"
   id = var.organization_id
 }
 
 data "aptible_environment" "env" {
-  # id = "238930f4-0750-4f55-b43c-e1a11c437e23"
   id = var.environment_id
   org_id = data.aptible_organization.org.id
 }
@@ -37,14 +37,14 @@ resource "aptible_aws_vpc" "network" {
 }
 
 resource "aptible_aws_rds" "db" {
-  environment_id = data.aptible_environment.env.id
+  environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  vpc_name = aptible_aws_vpc.network.name
+  vpc_name        = aptible_aws_vpc.network.name
 
-  asset_version  = "latest"
-  name = "app_redis"
-  engine = "postgres"
-  version = "13"
+  asset_version   = "latest"
+  name            = "db"
+  engine          = "postgres"
+  engine_version  = "14"
 }
 
 #resource "aptible_aws_redis" "cache" {
