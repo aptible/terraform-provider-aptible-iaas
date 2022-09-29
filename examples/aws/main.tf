@@ -58,15 +58,15 @@ resource "aptible_aws_redis" "cache" {
   snapshot_window = "00:00-01:00"
   maintenance_window = "sun:10:00-sun:14:00"
 }
-#
-#resource "aptible_aws_acm" "cert" {
-#  environment_id = data.aptible_environment.env.id
-#  organization_id = data.aptible_organization.org.id
-#
-#  asset_version  = "latest"
-#  fqdn = "www.example.com"
-#  validation_method = "EMAIL"
-#}
+
+resource "aptible_aws_acm" "cert" {
+  environment_id = data.aptible_environment.env.id
+  organization_id = data.aptible_organization.org.id
+
+  asset_version  = "latest"
+  fqdn = "eric.aptible.com"
+  validation_method = "EMAIL"
+}
 #
 #resource "aptible_aws_ecs_web" "web" {
 #  environment_id = data.aptible_environment.env.id
