@@ -47,14 +47,17 @@ resource "aptible_aws_rds" "db" {
   engine_version  = "14"
 }
 
-#resource "aptible_aws_redis" "cache" {
-#  environment_id = data.aptible_environment.env.id
-#  organization_id = data.aptible_organization.org.id
-#  vpc_name = aptible_aws_vpc.network.name
-#
-#  asset_version  = "latest"
-#  name = "app_redis"
-#}
+resource "aptible_aws_redis" "cache" {
+  environment_id = data.aptible_environment.env.id
+  organization_id = data.aptible_organization.org.id
+  vpc_name = aptible_aws_vpc.network.name
+
+  asset_version  = "latest"
+  name = "appcache"
+  description = "integration testing"
+  snapshot_window = "00:00-01:00"
+  maintenance_window = "sun:10:00-sun:14:00"
+}
 #
 #resource "aptible_aws_acm" "cert" {
 #  environment_id = data.aptible_environment.env.id
