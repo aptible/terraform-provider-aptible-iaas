@@ -15,10 +15,12 @@ type RDS struct {
 	OrganizationId types.String `tfsdk:"organization_id" json:"organization_id"`
 	Status         types.String `tfsdk:"status" json:"status"`
 
-	VpcName       types.String `tfsdk:"vpc_name" json:"vpc_name"`
-	Name          types.String `tfsdk:"name" json:"name"`
-	Engine        types.String `tfsdk:"engine" json:"engine"`
-	EngineVersion types.String `tfsdk:"engine_version" json:"engine_version"`
+	VpcName          types.String `tfsdk:"vpc_name" json:"vpc_name"`
+	Name             types.String `tfsdk:"name" json:"name"`
+	Engine           types.String `tfsdk:"engine" json:"engine"`
+	EngineVersion    types.String `tfsdk:"engine_version" json:"engine_version"`
+	UriSecretArn     types.String `tfsdk:"uri_secret_arn" json:"uri_secret_arn"`
+	SecretsKmsKeyArn types.String `tfsdk:"secrets_kms_key_arn" json:"rds_secrets_kms_key_arn"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -65,19 +67,31 @@ var AssetSchema = map[string]tfsdk.Attribute{
 		Type:        types.StringType,
 		Required:    true,
 	},
+	"uri_secret_arn": {
+		Computed: true,
+		Type:     types.StringType,
+	},
+	"secrets_kms_key_arn": {
+		Computed: true,
+		Type:     types.StringType,
+	},
 }
 
 func GenerateResourceFromAssetOutput(output *cloud_api_client.AssetOutput) (*RDS, error) {
+	outputs := *output.Outputs
+
 	model := &RDS{
-		Id:             types.String{Value: output.Id},
-		AssetVersion:   types.String{Value: output.AssetVersion},
-		EnvironmentId:  types.String{Value: output.Environment.Id},
-		OrganizationId: types.String{Value: output.Environment.Organization.Id},
-		Status:         types.String{Value: string(output.Status)},
-		VpcName:        types.String{Value: output.CurrentAssetParameters.Data["vpc_name"].(string)},
-		Name:           types.String{Value: output.CurrentAssetParameters.Data["name"].(string)},
-		Engine:         types.String{Value: output.CurrentAssetParameters.Data["engine"].(string)},
-		EngineVersion:  types.String{Value: output.CurrentAssetParameters.Data["engine_version"].(string)},
+		Id:               types.String{Value: output.Id},
+		AssetVersion:     types.String{Value: output.AssetVersion},
+		EnvironmentId:    types.String{Value: output.Environment.Id},
+		OrganizationId:   types.String{Value: output.Environment.Organization.Id},
+		Status:           types.String{Value: string(output.Status)},
+		VpcName:          types.String{Value: output.CurrentAssetParameters.Data["vpc_name"].(string)},
+		Name:             types.String{Value: output.CurrentAssetParameters.Data["name"].(string)},
+		Engine:           types.String{Value: output.CurrentAssetParameters.Data["engine"].(string)},
+		EngineVersion:    types.String{Value: output.CurrentAssetParameters.Data["engine_version"].(string)},
+		UriSecretArn:     types.String{Value: outputs["uri_secret_arn"].Data.(string)},
+		SecretsKmsKeyArn: types.String{Value: outputs["rds_secrets_kms_key_arn"].Data.(string)},
 	}
 
 	return model, nil
