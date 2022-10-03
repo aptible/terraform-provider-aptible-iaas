@@ -81,15 +81,14 @@ data "aws_route53_zone" "example" {
 }
 
 locals {
-  validation_dns = {
-    for dvo in aptible_aws_acm.cert.domain_validation_records : dvo.domain_name => {
+  validation_dns = [
+    for dvo in aptible_aws_acm.cert.domain_validation_records : {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
     }
-  }
+  ]
 }
-
 
 resource "aws_route53_record" "example" {
   allow_overwrite = true
@@ -98,11 +97,11 @@ resource "aws_route53_record" "example" {
   ttl             = 60
   type            = local.validation_dns.0.type
   zone_id         = data.aws_route53_zone.example.zone_id
+  depends_on      = [aptible_aws_acm.cert]
 }
 
 resource "time_sleep" "wait_30_seconds" {
-  depends_on = [aws_route53_record.example]
-
+  depends_on      = [aws_route53_record.example]
   create_duration = "30s"
 }
 
@@ -121,12 +120,6 @@ resource "time_sleep" "wait_30_seconds" {
 #  ttl             = 60
 #  type            = each.value.type
 #  zone_id         = data.aws_route53_zone.example.zone_id
-#}
-#
-#resource "time_sleep" "wait_30_seconds" {
-#  depends_on = [aws_route53_record.example]
-#
-#  create_duration = "30s"
 #}
 
 resource "aptible_aws_ecs_web" "web" {

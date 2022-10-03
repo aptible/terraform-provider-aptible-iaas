@@ -6,6 +6,7 @@ import (
 	"time"
 
 	cloud_api_client "github.com/aptible/cloud-api-clients/clients/go"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -27,7 +28,7 @@ var AssetStatusesThatIndicateCompletion = []cloud_api_client.AssetStatus{
 // ErrorTimeOutOnAssetStatus - error that's returned when asset waiter times out
 var ErrorTimeOutOnAssetStatus = fmt.Errorf("timed out when waiting for asset status")
 
-func (u Utils) WaitForAssetStatusInOperationCompleteState(ctx context.Context, orgId, envId, id string) error {
+func WaitForAssetStatusInOperationCompleteState(client client.CloudClient, ctx context.Context, orgId, envId, id string) error {
 	tflog.Trace(
 		ctx, "waiting for asset status",
 		map[string]interface{}{
@@ -50,7 +51,7 @@ func (u Utils) WaitForAssetStatusInOperationCompleteState(ctx context.Context, o
 				})
 			return ErrorTimeOutOnAssetStatus
 		}
-		asset, err := u.client.DescribeAsset(ctx, orgId, envId, id)
+		asset, err := client.DescribeAsset(ctx, orgId, envId, id)
 		if err != nil {
 			return err
 		}
