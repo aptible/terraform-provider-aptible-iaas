@@ -20,6 +20,8 @@ type Redis struct {
 	Description       types.String `tfsdk:"description" json:"description"`
 	SnapshotWindow    types.String `tfsdk:"snapshot_window" json:"snapshot_window"`
 	MaintenanceWindow types.String `tfsdk:"maintenance_window" json:"maintainence_window"`
+	UriSecretArn      types.String `tfsdk:"uri_secret_arn" json:"elasticache_token_secret_arn"`
+	SecretsKmsKeyArn  types.String `tfsdk:"secrets_kms_key_arn" json:"elasticache_token_kms_key_arn"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -68,9 +70,19 @@ var AssetSchema = map[string]tfsdk.Attribute{
 		Type:     types.StringType,
 		Required: true,
 	},
+	"uri_secret_arn": {
+		Computed: true,
+		Type:     types.StringType,
+	},
+	"secrets_kms_key_arn": {
+		Computed: true,
+		Type:     types.StringType,
+	},
 }
 
 func GenerateResourceFromAssetOutput(output *cloud_api_client.AssetOutput) (*Redis, error) {
+	outputs := *output.Outputs
+
 	model := &Redis{
 		Id:                types.String{Value: output.Id},
 		AssetVersion:      types.String{Value: output.AssetVersion},
@@ -82,6 +94,8 @@ func GenerateResourceFromAssetOutput(output *cloud_api_client.AssetOutput) (*Red
 		Description:       types.String{Value: output.CurrentAssetParameters.Data["description"].(string)},
 		SnapshotWindow:    types.String{Value: output.CurrentAssetParameters.Data["snapshot_window"].(string)},
 		MaintenanceWindow: types.String{Value: output.CurrentAssetParameters.Data["maintenance_window"].(string)},
+		UriSecretArn:      types.String{Value: outputs["elasticache_token_secret_arn"].Data.(string)},
+		SecretsKmsKeyArn:  types.String{Value: outputs["elasticache_token_kms_key_arn"].Data.(string)},
 	}
 
 	return model, nil
