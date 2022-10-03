@@ -2,64 +2,75 @@ package rds
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
-	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/common"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/utils"
 )
 
-type ResourceAssetType struct{}
+var _ resource.ResourceWithImportState = &Resource{}
 
-func (r ResourceAssetType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func NewResource() resource.Resource {
+	return &Resource{}
+}
+
+type Resource struct {
+	client client.CloudClient
+}
+
+func (r Resource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
-		Attributes: AssetSchema,
+		MarkdownDescription: resourceDescription,
+		Attributes:          AssetSchema,
 	}, nil
 }
 
-func (r ResourceAssetType) NewResource(_ context.Context, p tfsdk.Provider) (tfsdk.Resource, diag.Diagnostics) {
-	return resourceAsset{
-		p: *(p.(*common.Provider)),
-	}, nil
+func (r *Resource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + resourceTypeName
 }
 
-type resourceAsset struct {
-	p common.Provider
-}
-
-func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceRequest, resp *tfsdk.CreateResourceResponse) {
-	if !r.p.Configured {
-		resp.Diagnostics.AddError(
-			"Provider not configured",
-			"The provider hasn't been configured before apply, likely because it depends on an unknown value from another resource. This leads to weird stuff happening, so we'd prefer if you didn't do that. Thanks!",
-		)
+func (r *Resource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
 		return
 	}
 
-	var plan RDS
+	client, ok := req.ProviderData.(client.CloudClient)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected client.CloudClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	r.client = client
+}
+
+func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan ResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	tflog.Info(ctx, "Creating asset", map[string]interface{}{"plan": plan})
+	tflog.Info(ctx, "Creating asset", map[string]interface{}{"asset": plan})
 
-	assetInput := cac.AssetInput{
-		Asset:        client.CompileAsset("aws", "rds", plan.AssetVersion.Value),
-		AssetVersion: plan.AssetVersion.Value,
-		AssetParameters: map[string]interface{}{
-			"vpc_name":       plan.VpcName.Value,
-			"name":           plan.Name.Value,
-			"engine":         plan.Engine.Value,
-			"engine_version": plan.EngineVersion.Value,
-		},
+	assetInput, err := planToAssetInput(plan)
+	if err != nil {
+		return
 	}
-	createdAsset, err := r.p.Client.CreateAsset(
+
+	createdAsset, err := r.client.CreateAsset(
 		ctx,
 		plan.OrganizationId.Value,
 		plan.EnvironmentId.Value,
@@ -82,7 +93,7 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 		},
 	)
 
-	result, err := GenerateResourceFromAssetOutput(createdAsset)
+	result, err := assetOutputToPlan(createdAsset)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating asset",
@@ -97,7 +108,8 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 		return
 	}
 
-	if err := r.p.Utils.WaitForAssetStatusInOperationCompleteState(
+	if err := utils.WaitForAssetStatusInOperationCompleteState(
+		r.client,
 		ctx,
 		result.OrganizationId.Value,
 		result.EnvironmentId.Value,
@@ -111,17 +123,16 @@ func (r resourceAsset) Create(ctx context.Context, req tfsdk.CreateResourceReque
 	}
 }
 
-// Read resource information
-func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, resp *tfsdk.ReadResourceResponse) {
+func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	// Get current state
-	var state RDS
+	var state ResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	assetClientOutput, err := r.p.Client.DescribeAsset(ctx, state.OrganizationId.Value, state.EnvironmentId.Value, state.Id.Value)
+	assetClientOutput, err := r.client.DescribeAsset(ctx, state.OrganizationId.Value, state.EnvironmentId.Value, state.Id.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading asset",
@@ -130,7 +141,7 @@ func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 		return
 	}
 
-	asset, err := GenerateResourceFromAssetOutput(assetClientOutput)
+	asset, err := assetOutputToPlan(assetClientOutput)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error get asset when trying to update (refreshing state)",
@@ -147,9 +158,9 @@ func (r resourceAsset) Read(ctx context.Context, req tfsdk.ReadResourceRequest, 
 	}
 }
 
-func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceRequest, resp *tfsdk.UpdateResourceResponse) {
+func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// Get plan values
-	var plan RDS
+	var plan ResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -157,7 +168,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 	}
 
 	// Get plan values
-	var state RDS
+	var state ResourceModel
 	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -165,7 +176,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 	}
 
 	// Get current state and compare against remote
-	assetInCloudApi, err := r.p.Client.DescribeAsset(
+	assetInCloudApi, err := r.client.DescribeAsset(
 		ctx,
 		plan.OrganizationId.Value,
 		plan.EnvironmentId.Value,
@@ -179,19 +190,13 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		return
 	}
 
-	assetInput := cac.AssetInput{
-		Asset:        client.CompileAsset("aws", "rds", plan.AssetVersion.Value),
-		AssetVersion: plan.AssetVersion.Value,
-		AssetParameters: map[string]interface{}{
-			"vpc_name":       plan.VpcName.Value,
-			"name":           plan.Name.Value,
-			"engine":         plan.Engine.Value,
-			"engine_version": plan.EngineVersion.Value,
-		},
+	assetInput, err := planToAssetInput(plan)
+	if err != nil {
+		return
 	}
 
 	// request update
-	result, err := r.p.Client.UpdateAsset(
+	result, err := r.client.UpdateAsset(
 		ctx,
 		assetInCloudApi.Id,
 		assetInCloudApi.Environment.Id,
@@ -206,7 +211,7 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		return
 	}
 
-	stateToSet, err := GenerateResourceFromAssetOutput(result)
+	stateToSet, err := assetOutputToPlan(result)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error get asset when trying to update (refreshing state)",
@@ -221,7 +226,8 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 		return
 	}
 
-	if err := r.p.Utils.WaitForAssetStatusInOperationCompleteState(
+	if err := utils.WaitForAssetStatusInOperationCompleteState(
+		r.client,
 		ctx,
 		result.Environment.Organization.Id,
 		result.Environment.Id,
@@ -235,9 +241,8 @@ func (r resourceAsset) Update(ctx context.Context, req tfsdk.UpdateResourceReque
 	}
 }
 
-// Delete resource
-func (r resourceAsset) Delete(ctx context.Context, req tfsdk.DeleteResourceRequest, resp *tfsdk.DeleteResourceResponse) {
-	var state RDS
+func (r *Resource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state ResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -245,7 +250,7 @@ func (r resourceAsset) Delete(ctx context.Context, req tfsdk.DeleteResourceReque
 	}
 
 	// Delete asset by calling API
-	err := r.p.Client.DestroyAsset(ctx, state.OrganizationId.Value, state.EnvironmentId.Value, state.Id.Value)
+	err := r.client.DestroyAsset(ctx, state.OrganizationId.Value, state.EnvironmentId.Value, state.Id.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting asset",
@@ -254,7 +259,8 @@ func (r resourceAsset) Delete(ctx context.Context, req tfsdk.DeleteResourceReque
 		return
 	}
 
-	if err := r.p.Utils.WaitForAssetStatusInOperationCompleteState(
+	if err := utils.WaitForAssetStatusInOperationCompleteState(
+		r.client,
 		ctx,
 		state.OrganizationId.Value,
 		state.EnvironmentId.Value,
@@ -271,7 +277,6 @@ func (r resourceAsset) Delete(ctx context.Context, req tfsdk.DeleteResourceReque
 	resp.State.RemoveResource(ctx)
 }
 
-func (r resourceAsset) ImportState(ctx context.Context, req tfsdk.ImportResourceStateRequest, resp *tfsdk.ImportResourceStateResponse) {
-	// Save the import identifier in the id attribute
-	tfsdk.ResourceImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+func (r *Resource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

@@ -2,18 +2,28 @@ package environment
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/common"
 )
 
-type DataSourceEnvType struct{}
+// Ensure provider defined types fully satisfy framework interfaces
+var _ datasource.DataSource = &EnvDataSource{}
 
-func (r DataSourceEnvType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func NewDataSource() datasource.DataSource {
+	return &EnvDataSource{}
+}
+
+type EnvDataSource struct {
+	client client.CloudClient
+}
+
+func (r EnvDataSource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
 			"id": {
@@ -32,40 +42,55 @@ func (r DataSourceEnvType) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diag
 	}, nil
 }
 
-func (r DataSourceEnvType) NewDataSource(ctx context.Context, p tfsdk.Provider) (tfsdk.DataSource, diag.Diagnostics) {
-	return dataSourceEnv{
-		p: *(p.(*common.Provider)),
-	}, nil
+func (d *EnvDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_environment"
 }
 
-type dataSourceEnv struct {
-	p common.Provider
+func (r *EnvDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(client.CloudClient)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected client.CloudClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	r.client = client
 }
 
-func (r dataSourceEnv) Read(ctx context.Context, req tfsdk.ReadDataSourceRequest, resp *tfsdk.ReadDataSourceResponse) {
-	var config Environment
+func (r *EnvDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var config Env
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	env, err := r.p.Client.DescribeEnvironment(ctx, config.OrgID.Value, config.ID.Value)
+	env, err := r.client.DescribeEnvironment(ctx, config.OrgID.Value, config.ID.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error retrieving environments",
+			"Error retrieving org",
 			err.Error(),
 		)
 		return
 	}
 
-	state := &Environment{
+	state := &Env{
 		ID:    types.String{Value: env.Id},
 		OrgID: types.String{Value: env.Organization.Id},
 		Name:  types.String{Value: env.Name},
 	}
 
-	tflog.Debug(ctx, "Creating asset", map[string]interface{}{"state": state})
+	tflog.Info(ctx, "Setting state for asset", map[string]interface{}{"state": state})
 
 	// Set state
 	diags = resp.State.Set(ctx, &state)
