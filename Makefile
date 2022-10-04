@@ -48,3 +48,17 @@ test:
 
 testacc:
 	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m
+
+resource:
+	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/ecs/resources.go
+	sed -i 's/package acm/package ecs/g' ./internal/provider/assets/aws/ecs/resources.go
+
+	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/rds/resources.go
+	sed -i 's/package acm/package rds/g' ./internal/provider/assets/aws/rds/resources.go
+
+	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/redis/resources.go
+	sed -i 's/package acm/package redis/g' ./internal/provider/assets/aws/redis/resources.go
+
+	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/vpc/resources.go
+	sed -i 's/package acm/package vpc/g' ./internal/provider/assets/aws/vpc/resources.go
+.PHONY: resource

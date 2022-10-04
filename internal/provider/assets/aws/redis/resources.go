@@ -65,7 +65,7 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 
 	tflog.Info(ctx, "Creating asset", map[string]interface{}{"asset": plan})
 
-	assetInput, err := planToAssetInput(plan)
+	assetInput, err := planToAssetInput(ctx, plan)
 	if err != nil {
 		return
 	}
@@ -83,9 +83,7 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		)
 		return
 	}
-	// for more information on logging from providers, refer to
-	// https://pkg.go.dev/github.com/hashicorp/terraform-plugin-log/tflog
-	tflog.Trace(
+	tflog.Info(
 		ctx, "created asset",
 		map[string]interface{}{
 			"id":     createdAsset.Id,
@@ -93,32 +91,61 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		},
 	)
 
-	result, err := assetOutputToPlan(createdAsset)
+	nextPlan, err := assetOutputToPlan(ctx, createdAsset)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating asset",
-			"Error when creating asset"+plan.Id.Value+": "+err.Error(),
+			fmt.Sprintf(
+				"Error when creating asset %s: %s",
+				plan.Id.Value,
+				err.Error(),
+			),
 		)
 		return
 	}
 
-	diags = resp.State.Set(ctx, result)
+	diags = resp.State.Set(ctx, nextPlan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	if err := utils.WaitForAssetStatusInOperationCompleteState(
+	completedAsset, err := utils.WaitForAssetStatusInOperationCompleteState(
 		r.client,
 		ctx,
-		result.OrganizationId.Value,
-		result.EnvironmentId.Value,
-		result.Id.Value,
-	); err != nil {
+		plan.OrganizationId.Value,
+		plan.EnvironmentId.Value,
+		createdAsset.Id,
+	)
+
+	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error waiting for asset on create",
-			"Error when waiting for asset id"+result.Id.Value+": "+err.Error(),
+			fmt.Sprintf(
+				"Error when waiting for asset id %s: %s",
+				createdAsset.Id,
+				err.Error(),
+			),
 		)
+		return
+	}
+
+	nextPlan, err = assetOutputToPlan(ctx, completedAsset)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating asset",
+			fmt.Sprintf(
+				"Error when creating asset %s: %s",
+				plan.Id.Value,
+				err.Error(),
+			),
+		)
+		return
+	}
+
+	diags = resp.State.Set(ctx, nextPlan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 }
@@ -136,12 +163,16 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading asset",
-			"Could not read ID "+state.Id.Value+": "+err.Error(),
+			fmt.Sprintf(
+				"Error when creating asset %s: %s",
+				state.Id.Value,
+				err.Error(),
+			),
 		)
 		return
 	}
 
-	asset, err := assetOutputToPlan(assetClientOutput)
+	asset, err := assetOutputToPlan(ctx, assetClientOutput)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error get asset when trying to update (refreshing state)",
@@ -190,7 +221,7 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 		return
 	}
 
-	assetInput, err := planToAssetInput(plan)
+	assetInput, err := planToAssetInput(ctx, plan)
 	if err != nil {
 		return
 	}
@@ -206,16 +237,33 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error requesting update from cloud api",
-			"Could not marshal asset parameters json, unexpected error: "+err.Error(),
+			fmt.Sprintf("Could not marshal asset parameters json, unexpected error: %s", err.Error()),
 		)
 		return
 	}
 
-	stateToSet, err := assetOutputToPlan(result)
+	completedAsset, err := utils.WaitForAssetStatusInOperationCompleteState(
+		r.client,
+		ctx,
+		result.Environment.Organization.Id,
+		result.Environment.Id,
+		result.Id,
+	)
+
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error waiting for asset on update",
+			fmt.Sprintf("Error when waiting for asset id: %s: %s", result.Id, err.Error()),
+		)
+		return
+	}
+
+	stateToSet, err := assetOutputToPlan(ctx, completedAsset)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error get asset when trying to update (refreshing state)",
-			"Could get asset when trying to update (refreshing state): "+assetInCloudApi.Id+": "+err.Error())
+			fmt.Sprintf("Could get asset when trying to update (refreshing state): %s: %s", assetInCloudApi.Id, err.Error()),
+		)
 		return
 	}
 
@@ -223,20 +271,6 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	diags = resp.State.Set(ctx, *stateToSet)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	if err := utils.WaitForAssetStatusInOperationCompleteState(
-		r.client,
-		ctx,
-		result.Environment.Organization.Id,
-		result.Environment.Id,
-		result.Id,
-	); err != nil {
-		resp.Diagnostics.AddError(
-			"Error waiting for asset on update",
-			"Error when waiting for asset id"+result.Id+": "+err.Error(),
-		)
 		return
 	}
 }
@@ -254,21 +288,23 @@ func (r *Resource) Delete(ctx context.Context, req resource.DeleteRequest, resp 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting asset",
-			"Could not delete asset id "+state.Id.Value+": "+err.Error(),
+			fmt.Sprintf("Could not delete asset id %s: %s", state.Id.Value, err.Error()),
 		)
 		return
 	}
 
-	if err := utils.WaitForAssetStatusInOperationCompleteState(
+	_, err = utils.WaitForAssetStatusInOperationCompleteState(
 		r.client,
 		ctx,
 		state.OrganizationId.Value,
 		state.EnvironmentId.Value,
 		state.Id.Value,
-	); err != nil {
+	)
+
+	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error waiting for asset on delete",
-			"Error when waiting for asset id"+state.Id.Value+": "+err.Error(),
+			fmt.Sprintf("Error when waiting for asset id %s: %s", state.Id.Value, err.Error()),
 		)
 		return
 	}

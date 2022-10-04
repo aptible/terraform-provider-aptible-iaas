@@ -1,11 +1,14 @@
 package rds
 
 import (
+	"context"
+
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/utils"
 )
 
 var resourceTypeName = "_aws_rds"
@@ -81,7 +84,7 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	},
 }
 
-func planToAssetInput(plan ResourceModel) (cac.AssetInput, error) {
+func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, error) {
 	input := cac.AssetInput{
 		Asset:        client.CompileAsset("aws", "rds", plan.AssetVersion.Value),
 		AssetVersion: plan.AssetVersion.Value,
@@ -96,7 +99,7 @@ func planToAssetInput(plan ResourceModel) (cac.AssetInput, error) {
 	return input, nil
 }
 
-func assetOutputToPlan(output *cac.AssetOutput) (*ResourceModel, error) {
+func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceModel, error) {
 	outputs := *output.Outputs
 
 	model := &ResourceModel{
@@ -109,8 +112,8 @@ func assetOutputToPlan(output *cac.AssetOutput) (*ResourceModel, error) {
 		Name:             types.String{Value: output.CurrentAssetParameters.Data["name"].(string)},
 		Engine:           types.String{Value: output.CurrentAssetParameters.Data["engine"].(string)},
 		EngineVersion:    types.String{Value: output.CurrentAssetParameters.Data["engine_version"].(string)},
-		UriSecretArn:     types.String{Value: outputs["uri_secret_arn"].Data.(string)},
-		SecretsKmsKeyArn: types.String{Value: outputs["rds_secrets_kms_key_arn"].Data.(string)},
+		UriSecretArn:     types.String{Value: utils.SafeString(outputs["uri_secret_arn"].Data)},
+		SecretsKmsKeyArn: types.String{Value: utils.SafeString(outputs["rds_secrets_kms_key_arn"].Data)},
 	}
 
 	return model, nil

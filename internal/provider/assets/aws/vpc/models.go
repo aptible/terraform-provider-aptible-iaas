@@ -1,6 +1,8 @@
 package vpc
 
 import (
+	"context"
+
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -53,7 +55,7 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	},
 }
 
-func planToAssetInput(plan ResourceModel) (cac.AssetInput, error) {
+func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, error) {
 	input := cac.AssetInput{
 		Asset:        client.CompileAsset("aws", "vpc", plan.AssetVersion.Value),
 		AssetVersion: plan.AssetVersion.Value,
@@ -65,7 +67,7 @@ func planToAssetInput(plan ResourceModel) (cac.AssetInput, error) {
 	return input, nil
 }
 
-func assetOutputToPlan(output *cac.AssetOutput) (*ResourceModel, error) {
+func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceModel, error) {
 	vpc := &ResourceModel{
 		Id:             types.String{Value: output.Id},
 		AssetVersion:   types.String{Value: output.AssetVersion},
