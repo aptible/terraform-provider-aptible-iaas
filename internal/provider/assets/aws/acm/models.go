@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
@@ -130,8 +129,6 @@ type DnsData struct {
 func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceModel, error) {
 	outputs := *output.Outputs
 
-	tflog.Info(ctx, "--DVR--", map[string]interface{}{"state": outputs["dns_validation_records"]})
-
 	mapper := map[string]attr.Type{
 		"domain_name":           types.StringType,
 		"resource_record_name":  types.StringType,
@@ -163,7 +160,6 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 			})
 		}
 	}
-	tflog.Info(ctx, "--RECORDS--", map[string]interface{}{"state": records})
 
 	arnRaw := outputs["acm_certificate_arn"].Data
 	arn := ""

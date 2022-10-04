@@ -1,11 +1,14 @@
 package redis
 
 import (
+	"context"
+
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/utils"
 )
 
 var resourceTypeName = "_aws_redis"
@@ -84,7 +87,7 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	},
 }
 
-func planToAssetInput(plan ResourceModel) (cac.AssetInput, error) {
+func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, error) {
 	input := cac.AssetInput{
 		Asset:        client.CompileAsset("aws", "elasticache_redis", plan.AssetVersion.Value),
 		AssetVersion: plan.AssetVersion.Value,
@@ -100,7 +103,7 @@ func planToAssetInput(plan ResourceModel) (cac.AssetInput, error) {
 	return input, nil
 }
 
-func assetOutputToPlan(output *cac.AssetOutput) (*ResourceModel, error) {
+func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceModel, error) {
 	outputs := *output.Outputs
 
 	model := &ResourceModel{
@@ -114,8 +117,8 @@ func assetOutputToPlan(output *cac.AssetOutput) (*ResourceModel, error) {
 		Description:       types.String{Value: output.CurrentAssetParameters.Data["description"].(string)},
 		SnapshotWindow:    types.String{Value: output.CurrentAssetParameters.Data["snapshot_window"].(string)},
 		MaintenanceWindow: types.String{Value: output.CurrentAssetParameters.Data["maintenance_window"].(string)},
-		UriSecretArn:      types.String{Value: outputs["elasticache_token_secret_arn"].Data.(string)},
-		SecretsKmsKeyArn:  types.String{Value: outputs["elasticache_token_kms_key_arn"].Data.(string)},
+		UriSecretArn:      types.String{Value: utils.SafeString(outputs["elasticache_token_secret_arn"].Data)},
+		SecretsKmsKeyArn:  types.String{Value: utils.SafeString(outputs["elasticache_token_kms_key_arn"].Data)},
 	}
 
 	return model, nil

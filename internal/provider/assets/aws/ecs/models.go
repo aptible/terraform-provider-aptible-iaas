@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -131,7 +132,7 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	},
 }
 
-func planToAssetInput(plan ResourceModel) (cac.AssetInput, error) {
+func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, error) {
 	cmd := []string{}
 	for _, c := range plan.ContainerCommand {
 		cmd = append(cmd, c.Value)
@@ -168,7 +169,7 @@ func planToAssetInput(plan ResourceModel) (cac.AssetInput, error) {
 	return input, nil
 }
 
-func assetOutputToPlan(output *cac.AssetOutput) (*ResourceModel, error) {
+func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceModel, error) {
 	cmd := []types.String{}
 	cmdList := output.CurrentAssetParameters.Data["container_command"].([]interface{})
 	for _, c := range cmdList {
