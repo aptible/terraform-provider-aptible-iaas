@@ -27,6 +27,21 @@ variable "environment_id" {
   default = "b47357cd-2971-4f73-ad6f-2edbddcde529"
 }
 
+# -OR-
+# variable "secret_pass" {
+#   type    = string
+#   default = "123"
+# }
+
+variable "secrets" {
+  type      = map(string)
+  sensitive = true
+  default = {
+    pass    = "123"
+    other   = "abc"
+  }
+}
+
 data "aptible_organization" "org" {
   id = var.organization_id
 }
@@ -34,6 +49,15 @@ data "aptible_organization" "org" {
 data "aptible_environment" "env" {
   id      = var.environment_id
   org_id  = data.aptible_organization.org.id
+}
+
+resource "aptible_aws_secret" "secrets" {
+  environment_id  = data.aptible_environment.env.id
+  organization_id = data.aptible_organization.org.id
+  asset_version   = "latest"
+  name            = "mysecrets"
+  secret_string   = jsonencode(var.secrets)
+  # secret_string   = var.secret_pass
 }
 
 resource "aptible_aws_vpc" "network" {
@@ -123,6 +147,12 @@ resource "aptible_aws_ecs_web" "web" {
   lb_cert_arn         = aptible_aws_acm.cert.arn
   lb_cert_domain      = aptible_aws_acm.cert.fqdn
   environment_secrets = {
+    PASS = {
+      secret_arn      = aptible_aws_secret.secrets.arn
+      secret_kms_arn  = aptible_aws_secret.secrets.kms_arn,
+      secret_json_key = "pass"
+      # secret_json_key = ""
+    }
     DATABASE_URL = {
       secret_arn      = aptible_aws_rds.db.uri_secret_arn
       secret_kms_arn  = aptible_aws_rds.db.secrets_kms_key_arn,

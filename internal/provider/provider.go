@@ -16,6 +16,7 @@ import (
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/ecs"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/rds"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/redis"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/secret"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/vpc"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/environment"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/organization"
@@ -131,6 +132,7 @@ func (p *Provider) Resources(ctx context.Context) []func() resource.Resource {
 		rds.NewResource,
 		redis.NewResource,
 		vpc.NewResource,
+		secret.NewResource,
 	}
 }
 
