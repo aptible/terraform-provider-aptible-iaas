@@ -64,4 +64,7 @@ resource:
 
 	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/secret/resources.go
 	sed -i 's/package acm/package secret/g' ./internal/provider/assets/aws/secret/resources.go
+
+	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/ecs_compute/resources.go
+	sed -i 's/package acm/package ecscompute/g' ./internal/provider/assets/aws/ecs_compute/resources.go
 .PHONY: resource
