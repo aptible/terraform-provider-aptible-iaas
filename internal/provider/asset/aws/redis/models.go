@@ -8,7 +8,7 @@ import (
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
-	"github.com/aptible/terraform-provider-aptible-iaas/internal/utils"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/util"
 )
 
 var resourceTypeName = "_aws_redis"
@@ -117,8 +117,8 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 		Description:       types.String{Value: output.CurrentAssetParameters.Data["description"].(string)},
 		SnapshotWindow:    types.String{Value: output.CurrentAssetParameters.Data["snapshot_window"].(string)},
 		MaintenanceWindow: types.String{Value: output.CurrentAssetParameters.Data["maintenance_window"].(string)},
-		UriSecretArn:      types.String{Value: utils.SafeString(outputs["elasticache_token_secret_arn"].Data)},
-		SecretsKmsKeyArn:  types.String{Value: utils.SafeString(outputs["elasticache_token_kms_key_arn"].Data)},
+		UriSecretArn:      types.String{Value: util.SafeString(outputs["elasticache_token_secret_arn"].Data)},
+		SecretsKmsKeyArn:  types.String{Value: util.SafeString(outputs["elasticache_token_kms_key_arn"].Data)},
 	}
 
 	return model, nil

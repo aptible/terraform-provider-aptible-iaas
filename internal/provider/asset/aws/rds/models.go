@@ -8,7 +8,7 @@ import (
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
-	"github.com/aptible/terraform-provider-aptible-iaas/internal/utils"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/util"
 )
 
 var resourceTypeName = "_aws_rds"
@@ -112,8 +112,8 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 		Name:             types.String{Value: output.CurrentAssetParameters.Data["name"].(string)},
 		Engine:           types.String{Value: output.CurrentAssetParameters.Data["engine"].(string)},
 		EngineVersion:    types.String{Value: output.CurrentAssetParameters.Data["engine_version"].(string)},
-		UriSecretArn:     types.String{Value: utils.SafeString(outputs["uri_secret_arn"].Data)},
-		SecretsKmsKeyArn: types.String{Value: utils.SafeString(outputs["rds_secrets_kms_key_arn"].Data)},
+		UriSecretArn:     types.String{Value: util.SafeString(outputs["uri_secret_arn"].Data)},
+		SecretsKmsKeyArn: types.String{Value: util.SafeString(outputs["rds_secrets_kms_key_arn"].Data)},
 	}
 
 	return model, nil

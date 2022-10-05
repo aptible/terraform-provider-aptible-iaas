@@ -50,21 +50,21 @@ testacc:
 	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m
 
 resource:
-	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/ecs/resources.go
-	sed -i 's/package acm/package ecs/g' ./internal/provider/assets/aws/ecs/resources.go
+	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/ecs_web/resources.go
+	sed -i '' 's/package acm/package ecsweb/g' ./internal/provider/asset/aws/ecs_web/resources.go
 
-	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/rds/resources.go
-	sed -i 's/package acm/package rds/g' ./internal/provider/assets/aws/rds/resources.go
+	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/rds/resources.go
+	sed -i '' 's/package acm/package rds/g' ./internal/provider/asset/aws/rds/resources.go
 
-	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/redis/resources.go
-	sed -i 's/package acm/package redis/g' ./internal/provider/assets/aws/redis/resources.go
+	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/redis/resources.go
+	sed -i '' 's/package acm/package redis/g' ./internal/provider/asset/aws/redis/resources.go
 
-	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/vpc/resources.go
-	sed -i 's/package acm/package vpc/g' ./internal/provider/assets/aws/vpc/resources.go
+	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/vpc/resources.go
+	sed -i '' 's/package acm/package vpc/g' ./internal/provider/asset/aws/vpc/resources.go
 
-	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/secret/resources.go
-	sed -i 's/package acm/package secret/g' ./internal/provider/assets/aws/secret/resources.go
+	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/secret/resources.go
+	sed -i '' 's/package acm/package secret/g' ./internal/provider/asset/aws/secret/resources.go
 
-	cp ./internal/provider/assets/aws/acm/resources.go ./internal/provider/assets/aws/ecs_compute/resources.go
-	sed -i 's/package acm/package ecscompute/g' ./internal/provider/assets/aws/ecs_compute/resources.go
+	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/ecs_compute/resources.go
+	sed -i '' 's/package acm/package ecscompute/g' ./internal/provider/asset/aws/ecs_compute/resources.go
 .PHONY: resource

@@ -8,7 +8,7 @@ import (
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
-	"github.com/aptible/terraform-provider-aptible-iaas/internal/utils"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/util"
 )
 
 var resourceTypeName = "_aws_secret"
@@ -97,8 +97,8 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 		Status:         types.String{Value: string(output.Status)},
 		Name:           types.String{Value: output.CurrentAssetParameters.Data["name"].(string)},
 		SecretString:   types.String{Value: output.CurrentAssetParameters.Data["secret_string"].(string)},
-		Arn:            types.String{Value: utils.SafeString(outputs["secret_arn"].Data)},
-		KmsArn:         types.String{Value: utils.SafeString(outputs["kms_arn"].Data)},
+		Arn:            types.String{Value: util.SafeString(outputs["secret_arn"].Data)},
+		KmsArn:         types.String{Value: util.SafeString(outputs["kms_arn"].Data)},
 	}
 
 	return model, nil

@@ -4,7 +4,7 @@ aws asset resource files using `make resource`.
 
 ONLY edit aws/acm/resources.go.
 */
-package secret
+package redis
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
-	"github.com/aptible/terraform-provider-aptible-iaas/internal/utils"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/util"
 )
 
 var _ resource.ResourceWithImportState = &Resource{}
@@ -116,7 +116,7 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		return
 	}
 
-	completedAsset, err := utils.WaitForAssetStatusInOperationCompleteState(
+	completedAsset, err := util.WaitForAssetStatusInOperationCompleteState(
 		r.client,
 		ctx,
 		plan.OrganizationId.Value,
@@ -248,7 +248,7 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 		return
 	}
 
-	completedAsset, err := utils.WaitForAssetStatusInOperationCompleteState(
+	completedAsset, err := util.WaitForAssetStatusInOperationCompleteState(
 		r.client,
 		ctx,
 		result.Environment.Organization.Id,
@@ -299,7 +299,7 @@ func (r *Resource) Delete(ctx context.Context, req resource.DeleteRequest, resp 
 		return
 	}
 
-	_, err = utils.WaitForAssetStatusInOperationCompleteState(
+	_, err = util.WaitForAssetStatusInOperationCompleteState(
 		r.client,
 		ctx,
 		state.OrganizationId.Value,
