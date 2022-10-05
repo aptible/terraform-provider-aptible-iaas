@@ -89,6 +89,10 @@ func SafeString(obj interface{}) string {
 	}
 }
 
+func StringHasVal(input types.String) bool {
+	return !input.IsNull() && !input.IsUnknown()
+}
+
 func StringVal(input interface{}) types.String {
 	val := types.String{}
 	if input == nil {

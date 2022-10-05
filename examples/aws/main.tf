@@ -113,6 +113,11 @@ locals {
   ]
 }
 
+resource "aptible_aws_acm_waiter" "waiter" {
+  certificate_arn   = aptible_aws_acm.cert.arn
+  validation_fqdns  = [for dns in local.validation_dns: dns.record] # optional
+}
+
 resource "aws_route53_record" "domains" {
   allow_overwrite = true
   name            = local.validation_dns.0.name
@@ -120,19 +125,13 @@ resource "aws_route53_record" "domains" {
   ttl             = 60
   type            = local.validation_dns.0.type
   zone_id         = data.aws_route53_zone.domains.zone_id
-  depends_on      = [aptible_aws_acm.cert]
-}
-
-resource "time_sleep" "wait_30_seconds" {
-  depends_on      = [aws_route53_record.domains]
-  create_duration = "30s"
 }
 
 resource "aptible_aws_ecs_web" "web" {
   environment_id      = data.aptible_environment.env.id
   organization_id     = data.aptible_organization.org.id
   vpc_name            = aptible_aws_vpc.network.name
-  depends_on          = [time_sleep.wait_30_seconds]
+  depends_on          = [aptible_aws_acm_water.waiter]
 
   name                = "nextapp"
   container_name      = "nextapp"
