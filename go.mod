@@ -3,7 +3,7 @@ module github.com/aptible/terraform-provider-aptible-iaas
 go 1.18
 
 require (
-	github.com/aptible/cloud-api-clients/clients/go v0.0.0-20220907201222-ccf7b001ed80
+	github.com/aptible/cloud-api-clients/clients/go v0.0.0-20221012150224-d9a9a11c6363
 	github.com/hashicorp/terraform-plugin-framework v0.13.1-0.20221003161105-afd88cb368d0
 	github.com/hashicorp/terraform-plugin-log v0.7.0
 	golang.org/x/exp v0.0.0-20220916125017-b168a2c6b86b
@@ -27,8 +27,8 @@ require (
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/vmihailenco/msgpack/v4 v4.3.12 // indirect
 	github.com/vmihailenco/tagparser v0.1.1 // indirect
-	golang.org/x/net v0.0.0-20220907135653-1e95f45603a7 // indirect
-	golang.org/x/oauth2 v0.0.0-20210323180902-22b0adad7558 // indirect
+	golang.org/x/net v0.0.0-20221012135044-0b7e1fb9d458 // indirect
+	golang.org/x/oauth2 v0.0.0-20221006150949-b44042a4b9c1 // indirect
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"strconv"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -20,14 +19,12 @@ var resourceDescription = "ECS web resource"
 
 type Env struct {
 	SecretArn     types.String `tfsdk:"secret_arn" json:"secret_arn"`
-	SecretKmsArn  types.String `tfsdk:"secret_kms_arn" json:"secret_kms_arn"`
 	SecretJsonKey types.String `tfsdk:"secret_json_key" json:"secret_json_key"`
 }
 
 type EnvJson struct {
 	EnvVar        string `json:"environment_variable"`
 	SecretArn     string `json:"secret_arn"`
-	SecretKmsArn  string `json:"secret_kms_arn"`
 	SecretJsonKey string `json:"secret_json_key"`
 }
 
@@ -49,6 +46,7 @@ type ResourceModel struct {
 	EnvironmentSecrets map[string]Env `tfsdk:"environment_secrets" json:"environment_secrets"`
 	LbCertArn          types.String   `tfsdk:"lb_cert_arn" json:"lb_cert_arn"`
 	LbCertDomain       types.String   `tfsdk:"lb_cert_domain" json:"lb_cert_domain"`
+	ConnectsTo         []types.String `tfsdk:"connects_to"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -113,14 +111,14 @@ var AssetSchema = map[string]tfsdk.Attribute{
 		Type:     types.ListType{ElemType: types.StringType},
 		Required: true,
 	},
+	"connects_to": {
+		Type:     types.ListType{ElemType: types.StringType},
+		Optional: true,
+	},
 	"environment_secrets": {
 		Required: true,
 		Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
 			"secret_arn": {
-				Type:     types.StringType,
-				Required: true,
-			},
-			"secret_kms_arn": {
 				Type:     types.StringType,
 				Required: true,
 			},
@@ -133,37 +131,49 @@ var AssetSchema = map[string]tfsdk.Attribute{
 }
 
 func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, error) {
+	// TODO HACK: https://aptible.slack.com/archives/C03C2STPTDX/p1664478414991299
+	dd := strings.SplitN(plan.LbCertDomain.Value, ".", 2)
+
 	cmd := []string{}
 	for _, c := range plan.ContainerCommand {
 		cmd = append(cmd, c.Value)
 	}
+
 	secrets := []EnvJson{}
 	for k, v := range plan.EnvironmentSecrets {
 		secrets = append(secrets, EnvJson{
 			EnvVar:        k,
 			SecretArn:     v.SecretArn.Value,
-			SecretKmsArn:  v.SecretKmsArn.Value,
 			SecretJsonKey: v.SecretJsonKey.Value,
 		})
 	}
-	// TODO HACK: https://aptible.slack.com/archives/C03C2STPTDX/p1664478414991299
-	dd := strings.SplitN(plan.LbCertDomain.Value, ".", 2)
+
+	params := map[string]interface{}{
+		"vpc_name":            plan.VpcName.Value,
+		"name":                plan.Name.Value,
+		"is_public":           plan.IsPublic.Value,
+		"lb_cert_arn":         plan.LbCertArn.Value,
+		"lb_cert_domain":      dd[1],
+		"lb_cert_subdomain":   dd[0],
+		"container_name":      plan.ContainerName.Value,
+		"container_image":     plan.ContainerImage.Value,
+		"container_port":      plan.ContainerPort.Value,
+		"container_command":   cmd,
+		"environment_secrets": secrets,
+	}
+
 	input := cac.AssetInput{
-		Asset:        client.CompileAsset("aws", "ecs_web_service", plan.AssetVersion.Value),
-		AssetVersion: plan.AssetVersion.Value,
-		AssetParameters: map[string]interface{}{
-			"vpc_name":            plan.VpcName.Value,
-			"name":                plan.Name.Value,
-			"is_public":           plan.IsPublic.Value,
-			"lb_cert_arn":         plan.LbCertArn.Value,
-			"lb_cert_domain":      dd[1],
-			"lb_cert_subdomain":   dd[0],
-			"container_name":      plan.ContainerName.Value,
-			"container_image":     plan.ContainerImage.Value,
-			"container_port":      plan.ContainerPort.Value,
-			"container_command":   cmd,
-			"environment_secrets": secrets,
-		},
+		Asset:           client.CompileAsset("aws", "ecs_web_service", plan.AssetVersion.Value),
+		AssetVersion:    plan.AssetVersion.Value,
+		AssetParameters: params,
+	}
+
+	if len(plan.ConnectsTo) > 0 {
+		connect := []string{}
+		for _, c := range plan.ConnectsTo {
+			connect = append(connect, c.Value)
+		}
+		input.ConnectsTo = connect
 	}
 
 	return input, nil
@@ -174,6 +184,12 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 	cmdList := output.CurrentAssetParameters.Data["container_command"].([]interface{})
 	for _, c := range cmdList {
 		cmd = append(cmd, types.String{Value: c.(string)})
+	}
+
+	connect := []types.String{}
+	connectList := output.ConnectsTo
+	for _, c := range connectList {
+		connect = append(connect, types.String{Value: c})
 	}
 
 	// TODO: figure out how to not need an intermediate struct for marshal/unmarshal
@@ -191,17 +207,11 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 	for _, v := range secretsJson {
 		secrets[v.EnvVar] = Env{
 			SecretArn:     types.String{Value: v.SecretArn},
-			SecretKmsArn:  types.String{Value: v.SecretKmsArn},
 			SecretJsonKey: types.String{Value: v.SecretJsonKey},
 		}
 	}
 
-	portStr := output.CurrentAssetParameters.Data["container_port"].(string)
-	portInt, err := strconv.Atoi(portStr)
-	if err != nil {
-		return nil, err
-	}
-	port := float64(portInt)
+	port := output.CurrentAssetParameters.Data["container_port"].(float64)
 
 	// TODO: HACK
 	domain := fmt.Sprintf("%s.%s",
@@ -224,6 +234,7 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 		ContainerPort:      types.Number{Value: big.NewFloat(port)},
 		ContainerImage:     types.String{Value: output.CurrentAssetParameters.Data["container_image"].(string)},
 		ContainerCommand:   cmd,
+		ConnectsTo:         connect,
 		EnvironmentSecrets: secrets,
 	}
 

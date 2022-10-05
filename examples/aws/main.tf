@@ -72,7 +72,6 @@ resource "aptible_aws_rds" "db" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
   vpc_name        = aptible_aws_vpc.network.name
-  depends_on      = [aptible_aws_vpc.network]
 
   asset_version   = "latest" # force new
   name            = "mydb" # force new
@@ -84,7 +83,6 @@ resource "aptible_aws_redis" "cache" {
   environment_id      = data.aptible_environment.env.id
   organization_id     = data.aptible_organization.org.id
   vpc_name            = aptible_aws_vpc.network.name
-  depends_on          = [aptible_aws_vpc.network]
 
   asset_version       = "latest"
   name                = "mycache"
@@ -147,7 +145,7 @@ resource "aptible_aws_ecs_web" "web" {
   lb_cert_arn         = aptible_aws_acm.cert.arn
   lb_cert_domain      = aptible_aws_acm.cert.fqdn
 
-  # connects_to       = [aptible_aws_rds.db.id, aptible_aws_redis.cache.id] # optional, for connecting to other resources
+  connects_to       = [aptible_aws_rds.db.id, aptible_aws_redis.cache.id] # optional, for connecting to other resources
   # container_registry_secret_arn = aptible_aws_secret.secrets.registry_creds # optional
   is_public           = true # optional
   container_command   = [
@@ -163,18 +161,15 @@ resource "aptible_aws_ecs_web" "web" {
   environment_secrets = { # optional
     PASS = {
       secret_arn      = aptible_aws_secret.secrets.arn
-      secret_kms_arn  = aptible_aws_secret.secrets.kms_arn,
       secret_json_key = "pass"
       # secret_json_key = ""
     }
     DATABASE_URL = {
       secret_arn      = aptible_aws_rds.db.uri_secret_arn
-      secret_kms_arn  = aptible_aws_rds.db.secrets_kms_key_arn,
       secret_json_key = ""
     }
     REDIS_URL = {
       secret_arn      = aptible_aws_redis.cache.uri_secret_arn,
-      secret_kms_arn  = aptible_aws_redis.cache.secrets_kms_key_arn,
       secret_json_key = "dsn"
     }
     # TOKEN_SECRET = {
@@ -195,25 +190,22 @@ resource "aptible_aws_ecs_compute" "worker" {
   container_name      = "myworker"
   container_image     = "quay.io/aptible/deploy-demo-app"
 
-  # connects_to       = [aptible_aws_rds.db.id, aptible_aws_redis.cache.id] # optional, for connecting to other resources
+  connects_to       = [aptible_aws_rds.db.id, aptible_aws_redis.cache.id] # optional, for connecting to other resources
   # container_registry_secret_arn = aptible_aws_secret.secrets.registry_creds # optional
   container_command   = ["python", "-m", "worker"] # optional
   container_port      = 5001 # optional
   environment_secrets = { # optional
     PASS = {
       secret_arn      = aptible_aws_secret.secrets.arn
-      secret_kms_arn  = aptible_aws_secret.secrets.kms_arn,
       secret_json_key = "pass"
       # secret_json_key = ""
     }
     DATABASE_URL = {
       secret_arn      = aptible_aws_rds.db.uri_secret_arn
-      secret_kms_arn  = aptible_aws_rds.db.secrets_kms_key_arn,
       secret_json_key = ""
     }
     REDIS_URL = {
       secret_arn      = aptible_aws_redis.cache.uri_secret_arn,
-      secret_kms_arn  = aptible_aws_redis.cache.secrets_kms_key_arn,
       secret_json_key = "dsn"
     }
   }
