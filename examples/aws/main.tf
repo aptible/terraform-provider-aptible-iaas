@@ -27,20 +27,21 @@ variable "environment_id" {
   default = "b47357cd-2971-4f73-ad6f-2edbddcde529"
 }
 
-# -OR-
-# variable "secret_pass" {
-#   type    = string
-#   default = "123"
-# }
-
 variable "secrets" {
   type      = map(string)
   sensitive = true
   default = {
     pass    = "123"
     other   = "abc"
+    registry_creds = "xxx"
   }
 }
+
+# -OR-
+# variable "secret_pass" {
+#   type    = string
+#   default = "123"
+# }
 
 data "aptible_organization" "org" {
   id = var.organization_id
@@ -64,7 +65,7 @@ resource "aptible_aws_vpc" "network" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
   asset_version   = "latest"
-  name            = "myvpc"
+  name            = "myvpc" # optional
 }
 
 resource "aptible_aws_rds" "db" {
@@ -73,10 +74,10 @@ resource "aptible_aws_rds" "db" {
   vpc_name        = aptible_aws_vpc.network.name
   depends_on      = [aptible_aws_vpc.network]
 
-  asset_version   = "latest"
+  asset_version   = "latest" # force new
   name            = "mydb" # force new
-  engine          = "postgres"
-  engine_version  = "14"
+  engine          = "postgres" # force new
+  engine_version  = "14" # force new
 }
 
 resource "aptible_aws_redis" "cache" {
@@ -87,9 +88,10 @@ resource "aptible_aws_redis" "cache" {
 
   asset_version       = "latest"
   name                = "mycache"
-  description         = "integration testing"
-  snapshot_window     = "00:00-01:00"
-  maintenance_window  = "sun:10:00-sun:14:00"
+
+  description         = "integration testing" # optional
+  snapshot_window     = "00:00-01:00" # optional
+  maintenance_window  = "sun:10:00-sun:14:00" # optional
 }
 
 resource "aptible_aws_acm" "cert" {
@@ -98,7 +100,8 @@ resource "aptible_aws_acm" "cert" {
 
   asset_version     = "latest"
   fqdn              = "eric.aptible-test-leeroy.com"
-  validation_method = "DNS"
+
+  validation_method = "DNS" # optional
 }
 
 data "aws_route53_zone" "domains" {
@@ -139,14 +142,25 @@ resource "aptible_aws_ecs_web" "web" {
 
   asset_version       = "latest"
   name                = "myapp"
-  is_public           = true
   container_name      = "myapp"
   container_image     = "quay.io/aptible/deploy-demo-app"
-  container_command   = ["python", "-m", "gunicorn", "app:app", "-b", "0.0.0.0:5000", "--access-logfile", "-"]
-  container_port      = 5000
   lb_cert_arn         = aptible_aws_acm.cert.arn
   lb_cert_domain      = aptible_aws_acm.cert.fqdn
-  environment_secrets = {
+
+  # connects_to       = [aptible_aws_rds.db.id, aptible_aws_redis.cache.id] # optional, for connecting to other resources
+  # container_registry_secret_arn = aptible_aws_secret.secrets.registry_creds # optional
+  is_public           = true # optional
+  container_command   = [
+    "python",
+    "-m",
+    "gunicorn",
+    "app:app",
+    "-b",
+    "0.0.0.0:5000",
+    "--access-logfile",
+    "-"] # optional
+  container_port      = 5000 # optional
+  environment_secrets = { # optional
     PASS = {
       secret_arn      = aptible_aws_secret.secrets.arn
       secret_kms_arn  = aptible_aws_secret.secrets.kms_arn,
@@ -180,9 +194,12 @@ resource "aptible_aws_ecs_compute" "worker" {
   name                = "myworker"
   container_name      = "myworker"
   container_image     = "quay.io/aptible/deploy-demo-app"
-  container_command   = ["python", "-m", "worker"]
-  container_port      = 5001
-  environment_secrets = {
+
+  # connects_to       = [aptible_aws_rds.db.id, aptible_aws_redis.cache.id] # optional, for connecting to other resources
+  # container_registry_secret_arn = aptible_aws_secret.secrets.registry_creds # optional
+  container_command   = ["python", "-m", "worker"] # optional
+  container_port      = 5001 # optional
+  environment_secrets = { # optional
     PASS = {
       secret_arn      = aptible_aws_secret.secrets.arn
       secret_kms_arn  = aptible_aws_secret.secrets.kms_arn,
@@ -199,10 +216,5 @@ resource "aptible_aws_ecs_compute" "worker" {
       secret_kms_arn  = aptible_aws_redis.cache.secrets_kms_key_arn,
       secret_json_key = "dsn"
     }
-    # TOKEN_SECRET = {
-    #   secret_arn      = aptible_aws_redis.cache.uri_secret_arn,
-    #   secret_kms_arn  = aptible_aws_redis.cache.secrets_kms_key_arn,
-    #   secret_json_key = "token"
-    # }
   }
 }
