@@ -1,4 +1,4 @@
-package ecs
+package ecsweb
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 )
 
 var resourceTypeName = "_aws_ecs_web"
-var resourceDescription = "ECS resource"
+var resourceDescription = "ECS web resource"
 
 type Env struct {
 	SecretArn     types.String `tfsdk:"secret_arn" json:"secret_arn"`

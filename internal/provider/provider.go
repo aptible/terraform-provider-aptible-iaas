@@ -13,7 +13,7 @@ import (
 
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/acm"
-	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/ecs"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/ecs_web"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/ecs_compute"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/rds"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/assets/aws/redis"
@@ -129,7 +129,7 @@ func (p *Provider) Configure(ctx context.Context, req provider.ConfigureRequest,
 func (p *Provider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		acm.NewResource,
-		ecs.NewResource,
+		ecsweb.NewResource,
 		rds.NewResource,
 		redis.NewResource,
 		vpc.NewResource,
