@@ -142,10 +142,46 @@ resource "aptible_aws_ecs_web" "web" {
   is_public           = true
   container_name      = "myapp"
   container_image     = "quay.io/aptible/deploy-demo-app"
-  container_command   = ["bash"]
+  container_command   = ["python", "-m", "gunicorn", "app:app", "-b", "0.0.0.0:5000", "--access-logfile", "-"]
   container_port      = 5000
   lb_cert_arn         = aptible_aws_acm.cert.arn
   lb_cert_domain      = aptible_aws_acm.cert.fqdn
+  environment_secrets = {
+    PASS = {
+      secret_arn      = aptible_aws_secret.secrets.arn
+      secret_kms_arn  = aptible_aws_secret.secrets.kms_arn,
+      secret_json_key = "pass"
+      # secret_json_key = ""
+    }
+    DATABASE_URL = {
+      secret_arn      = aptible_aws_rds.db.uri_secret_arn
+      secret_kms_arn  = aptible_aws_rds.db.secrets_kms_key_arn,
+      secret_json_key = ""
+    }
+    REDIS_URL = {
+      secret_arn      = aptible_aws_redis.cache.uri_secret_arn,
+      secret_kms_arn  = aptible_aws_redis.cache.secrets_kms_key_arn,
+      secret_json_key = "dsn"
+    }
+    # TOKEN_SECRET = {
+    #   secret_arn      = aptible_aws_redis.cache.uri_secret_arn,
+    #   secret_kms_arn  = aptible_aws_redis.cache.secrets_kms_key_arn,
+    #   secret_json_key = "token"
+    # }
+  }
+}
+
+resource "aptible_aws_ecs_compute" "worker" {
+  environment_id      = data.aptible_environment.env.id
+  organization_id     = data.aptible_organization.org.id
+  vpc_name            = aptible_aws_vpc.network.name
+
+  asset_version       = "latest"
+  name                = "myworker"
+  container_name      = "myworker"
+  container_image     = "quay.io/aptible/deploy-demo-app"
+  container_command   = ["python", "-m", "worker"]
+  container_port      = 5001
   environment_secrets = {
     PASS = {
       secret_arn      = aptible_aws_secret.secrets.arn
