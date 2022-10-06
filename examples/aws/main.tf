@@ -15,6 +15,7 @@ provider "aws" {
 
 provider "aptible" {
   host = "cloud-api.cloud.aptible.com"
+  token = var.aptible_token
 }
 
 data "aptible_organization" "org" {

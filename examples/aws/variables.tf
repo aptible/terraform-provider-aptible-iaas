@@ -8,6 +8,11 @@ variable "environment_id" {
   description = "Your Aptible environment ID"
 }
 
+variable "aptible_token" {
+  type        = string
+  description = "Your Aptible auth token"
+}
+
 variable "domain" {
   type        = string
   description = "Parent domain (e.g. 'customer.com' for deploying onto demo-app.customer.com)"
