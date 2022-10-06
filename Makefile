@@ -28,12 +28,16 @@ release:
 	GOOS=windows GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_windows_amd64
 
 
-build-local:
-	GOOS=darwin GOARCH=${LOCAL_ARCH} go build -o ./bin/${BINARY}_${VERSION}_${LOCAL_TARGET}
+build-dev:
+	# https://www.terraform.io/plugin/debugging#debugging-caveats
+	GOOS=darwin GOARCH=${LOCAL_ARCH} go build -gcflags="all=-N -l" -o ./bin/${BINARY}_${VERSION}_${LOCAL_TARGET}
+.PHONY: build-dev
 
-local-install: build-local
-	# delete existing if it's already been saved
+clean:
 	rm -rf "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}" || true
+.PHONY: clean
+
+local-install: clean build-dev
 	mkdir -p "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/$(LOCAL_TARGET)"
 	cp ./bin/${BINARY}_${VERSION}_${LOCAL_TARGET} "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/$(LOCAL_TARGET)"
 	@echo "Installed as provider aptible.com/aptible/aptible-iaas version 0.0.0+local"
@@ -68,3 +72,7 @@ resource:
 	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/ecs_compute/resources.go
 	sed -i '' 's/package acm/package ecscompute/g' ./internal/provider/asset/aws/ecs_compute/resources.go
 .PHONY: resource
+
+debug:
+	dlv debug --accept-multiclient --continue --headless ./main.go -- -debug
+.PHONY: debug
