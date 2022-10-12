@@ -42,3 +42,4 @@ terraform
 .auto.tfvars.json
 
 main
+dev.tfrc
