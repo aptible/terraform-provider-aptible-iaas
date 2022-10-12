@@ -74,5 +74,9 @@ resource:
 .PHONY: resource
 
 debug:
-	dlv debug --accept-multiclient --continue --headless ./main.go -- -debug
+	dlv debug --accept-multiclient --continue --headless --listen=0.0.0.0:33000 ./main.go -- -debug
 .PHONY: debug
+
+dc:
+	dlv connect 0.0.0.0:33000
+.PHONY: debug-connect

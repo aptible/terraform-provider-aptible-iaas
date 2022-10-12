@@ -116,17 +116,15 @@ look something like this:
 ```bash
 $ make debug
 
-API server listening at: 127.0.0.1:62599
+API server listening at: 0.0.0.0:33000
 # other outputs
 Provider started. To attach Terraform CLI, set the TF_REATTACH_PROVIDERS environment variable with the following:
 
         TF_REATTACH_PROVIDERS='{"aptible.com/aptible/aptible-iaas":{"Protocol":"grpc","ProtocolVersion":6,"Pid":81791,"Test":true,"Addr":{"Network":"unix","String":"/var/folders/tr/86hx1jnj6f19nd3311mgs8340000gn/T/plugin3699290919"}}}'
 ```
 
-Copy the `URL:PORT` that the server is running on, e.g. `127.0.0.1:62599`.
-
 ```bash
-dlv connect 127.0.0.1:62599 # attach client to dlv server
+make dc # attach client to dlv server
 ```
 
 Set any breakpoints you want:
