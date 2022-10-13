@@ -11,6 +11,7 @@ import (
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/util"
 )
 
 var resourceTypeName = "_aws_ecs_compute"
@@ -90,7 +91,7 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	},
 	"container_registry_secret_arn": {
 		Type:     types.StringType,
-		Required: true,
+		Optional: true,
 	},
 	"container_port": {
 		Type:     types.NumberType,
@@ -205,7 +206,7 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 		ContainerName:              types.String{Value: output.CurrentAssetParameters.Data["container_name"].(string)},
 		ContainerPort:              types.Number{Value: big.NewFloat(port)},
 		ContainerImage:             types.String{Value: output.CurrentAssetParameters.Data["container_image"].(string)},
-		ContainerRegistrySecretArn: types.String{Value: output.CurrentAssetParameters.Data["container_registry_secret_arn"].(string)},
+		ContainerRegistrySecretArn: util.StringVal(output.CurrentAssetParameters.Data["container_registry_secret_arn"]),
 		ContainerCommand:           cmd,
 		ConnectsTo:                 connectsTo,
 		EnvironmentSecrets:         secrets,

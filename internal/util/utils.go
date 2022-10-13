@@ -8,6 +8,7 @@ import (
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -86,4 +87,14 @@ func SafeString(obj interface{}) string {
 	default:
 		return ""
 	}
+}
+
+func StringVal(input interface{}) types.String {
+	val := types.String{}
+	if input == nil {
+		val.Null = true
+	} else {
+		val.Value = SafeString(input)
+	}
+	return val
 }
