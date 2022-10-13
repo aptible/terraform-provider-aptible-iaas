@@ -206,3 +206,11 @@ resource "aptible_aws_ecs_compute" "worker" {
     }
   }
 }
+
+resource "aws_route53_record" "www" {
+  zone_id = data.aws_route53_zone.domains.zone_id
+  name    = aptible_aws_acm.cert.fqdn
+  type    = "CNAME"
+  ttl     = 300
+  records = [aptible_aws_ecs_web.web.load_balancer_url]
+}
