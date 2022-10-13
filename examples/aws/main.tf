@@ -19,12 +19,10 @@ provider "aptible" {
 
 variable "organization_id" {
   type    = string
-  default = "2253ae98-d65a-4180-aceb-8419b7416677"
 }
 
 variable "environment_id" {
   type    = string
-  default = "b47357cd-2971-4f73-ad6f-2edbddcde529"
 }
 
 variable "secrets" {
@@ -32,8 +30,6 @@ variable "secrets" {
   sensitive = true
   default = {
     pass    = "123"
-    other   = "abc"
-    registry_creds = "xxx"
   }
 }
 

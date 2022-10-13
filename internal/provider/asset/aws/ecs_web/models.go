@@ -7,11 +7,13 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/util"
 )
 
 var resourceTypeName = "_aws_ecs_web"
@@ -36,17 +38,19 @@ type ResourceModel struct {
 	OrganizationId types.String `tfsdk:"organization_id" json:"organization_id"`
 	Status         types.String `tfsdk:"status" json:"status"`
 
-	VpcName            types.String   `tfsdk:"vpc_name" json:"vpc_name"`
-	Name               types.String   `tfsdk:"name" json:"name"`
-	IsPublic           types.Bool     `tfsdk:"is_public" json:"is_public"`
-	ContainerName      types.String   `tfsdk:"container_name" json:"container_name"`
-	ContainerPort      types.Number   `tfsdk:"container_port" json:"container_port"`
-	ContainerImage     types.String   `tfsdk:"container_image" json:"container_image"`
-	ContainerCommand   []types.String `tfsdk:"container_command" json:"container_command"`
-	EnvironmentSecrets map[string]Env `tfsdk:"environment_secrets" json:"environment_secrets"`
-	LbCertArn          types.String   `tfsdk:"lb_cert_arn" json:"lb_cert_arn"`
-	LbCertDomain       types.String   `tfsdk:"lb_cert_domain" json:"lb_cert_domain"`
-	ConnectsTo         []types.String `tfsdk:"connects_to"`
+	VpcName                    types.String   `tfsdk:"vpc_name" json:"vpc_name"`
+	Name                       types.String   `tfsdk:"name" json:"name"`
+	IsPublic                   types.Bool     `tfsdk:"is_public" json:"is_public"`
+	ContainerName              types.String   `tfsdk:"container_name" json:"container_name"`
+	ContainerPort              types.Number   `tfsdk:"container_port" json:"container_port"`
+	ContainerImage             types.String   `tfsdk:"container_image" json:"container_image"`
+	ContainerCommand           []types.String `tfsdk:"container_command" json:"container_command"`
+	EnvironmentSecrets         map[string]Env `tfsdk:"environment_secrets" json:"environment_secrets"`
+	LbCertArn                  types.String   `tfsdk:"lb_cert_arn" json:"lb_cert_arn"`
+	LbCertDomain               types.String   `tfsdk:"lb_cert_domain" json:"lb_cert_domain"`
+	ConnectsTo                 types.List     `tfsdk:"connects_to"`
+	ContainerRegistrySecretArn types.String   `tfsdk:"container_registry_secret_arn"`
+	LoadBalancerUrl            types.String   `tfsdk:"load_balancer_url"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -103,6 +107,10 @@ var AssetSchema = map[string]tfsdk.Attribute{
 		Type:     types.StringType,
 		Required: true,
 	},
+	"container_registry_secret_arn": {
+		Type:     types.StringType,
+		Required: true,
+	},
 	"container_port": {
 		Type:     types.NumberType,
 		Required: true,
@@ -114,6 +122,10 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	"connects_to": {
 		Type:     types.ListType{ElemType: types.StringType},
 		Optional: true,
+	},
+	"load_balancer_url": {
+		Type:     types.StringType,
+		Computed: true,
 	},
 	"environment_secrets": {
 		Required: true,
@@ -149,17 +161,18 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 	}
 
 	params := map[string]interface{}{
-		"vpc_name":            plan.VpcName.Value,
-		"name":                plan.Name.Value,
-		"is_public":           plan.IsPublic.Value,
-		"lb_cert_arn":         plan.LbCertArn.Value,
-		"lb_cert_domain":      dd[1],
-		"lb_cert_subdomain":   dd[0],
-		"container_name":      plan.ContainerName.Value,
-		"container_image":     plan.ContainerImage.Value,
-		"container_port":      plan.ContainerPort.Value,
-		"container_command":   cmd,
-		"environment_secrets": secrets,
+		"vpc_name":                      plan.VpcName.Value,
+		"name":                          plan.Name.Value,
+		"is_public":                     plan.IsPublic.Value,
+		"lb_cert_arn":                   plan.LbCertArn.Value,
+		"lb_cert_domain":                dd[1],
+		"lb_cert_subdomain":             dd[0],
+		"container_name":                plan.ContainerName.Value,
+		"container_image":               plan.ContainerImage.Value,
+		"container_port":                plan.ContainerPort.Value,
+		"container_registry_secret_arn": plan.ContainerRegistrySecretArn.Value,
+		"container_command":             cmd,
+		"environment_secrets":           secrets,
 	}
 
 	input := cac.AssetInput{
@@ -168,11 +181,9 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 		AssetParameters: params,
 	}
 
-	if len(plan.ConnectsTo) > 0 {
+	if !plan.ConnectsTo.IsNull() && !plan.ConnectsTo.IsUnknown() {
 		connect := []string{}
-		for _, c := range plan.ConnectsTo {
-			connect = append(connect, c.Value)
-		}
+		_ = plan.ConnectsTo.ElementsAs(ctx, connect, false)
 		input.ConnectsTo = connect
 	}
 
@@ -186,10 +197,13 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 		cmd = append(cmd, types.String{Value: c.(string)})
 	}
 
-	connect := []types.String{}
-	connectList := output.ConnectsTo
-	for _, c := range connectList {
+	connect := []attr.Value{}
+	for _, c := range output.ConnectsTo {
 		connect = append(connect, types.String{Value: c})
+	}
+	connectsTo := types.List{Elems: connect, ElemType: types.StringType}
+	if len(connect) == 0 {
+		connectsTo.Null = true
 	}
 
 	// TODO: figure out how to not need an intermediate struct for marshal/unmarshal
@@ -219,23 +233,27 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 		output.CurrentAssetParameters.Data["lb_cert_domain"].(string),
 	)
 
+	outputs := *output.Outputs
+
 	model := &ResourceModel{
-		Id:                 types.String{Value: output.Id},
-		AssetVersion:       types.String{Value: output.AssetVersion},
-		EnvironmentId:      types.String{Value: output.Environment.Id},
-		OrganizationId:     types.String{Value: output.Environment.Organization.Id},
-		Status:             types.String{Value: string(output.Status)},
-		VpcName:            types.String{Value: output.CurrentAssetParameters.Data["vpc_name"].(string)},
-		Name:               types.String{Value: output.CurrentAssetParameters.Data["name"].(string)},
-		LbCertArn:          types.String{Value: output.CurrentAssetParameters.Data["lb_cert_arn"].(string)},
-		LbCertDomain:       types.String{Value: domain},
-		IsPublic:           types.Bool{Value: output.CurrentAssetParameters.Data["is_public"].(bool)},
-		ContainerName:      types.String{Value: output.CurrentAssetParameters.Data["container_name"].(string)},
-		ContainerPort:      types.Number{Value: big.NewFloat(port)},
-		ContainerImage:     types.String{Value: output.CurrentAssetParameters.Data["container_image"].(string)},
-		ContainerCommand:   cmd,
-		ConnectsTo:         connect,
-		EnvironmentSecrets: secrets,
+		Id:                         types.String{Value: output.Id},
+		AssetVersion:               types.String{Value: output.AssetVersion},
+		EnvironmentId:              types.String{Value: output.Environment.Id},
+		OrganizationId:             types.String{Value: output.Environment.Organization.Id},
+		Status:                     types.String{Value: string(output.Status)},
+		VpcName:                    types.String{Value: output.CurrentAssetParameters.Data["vpc_name"].(string)},
+		Name:                       types.String{Value: output.CurrentAssetParameters.Data["name"].(string)},
+		LbCertArn:                  types.String{Value: output.CurrentAssetParameters.Data["lb_cert_arn"].(string)},
+		LbCertDomain:               types.String{Value: domain},
+		IsPublic:                   types.Bool{Value: output.CurrentAssetParameters.Data["is_public"].(bool)},
+		ContainerName:              types.String{Value: output.CurrentAssetParameters.Data["container_name"].(string)},
+		ContainerPort:              types.Number{Value: big.NewFloat(port)},
+		ContainerImage:             types.String{Value: output.CurrentAssetParameters.Data["container_image"].(string)},
+		ContainerRegistrySecretArn: types.String{Value: output.CurrentAssetParameters.Data["container_registry_secret_arn"].(string)},
+		LoadBalancerUrl:            types.String{Value: util.SafeString(outputs["load_balancer_url"].Data)},
+		ConnectsTo:                 connectsTo,
+		ContainerCommand:           cmd,
+		EnvironmentSecrets:         secrets,
 	}
 
 	return model, nil

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -34,14 +35,15 @@ type ResourceModel struct {
 	OrganizationId types.String `tfsdk:"organization_id" json:"organization_id"`
 	Status         types.String `tfsdk:"status" json:"status"`
 
-	VpcName            types.String   `tfsdk:"vpc_name" json:"vpc_name"`
-	Name               types.String   `tfsdk:"name" json:"name"`
-	EnvironmentSecrets map[string]Env `tfsdk:"environment_secrets" json:"environment_secrets"`
-	ContainerName      types.String   `tfsdk:"container_name" json:"container_name"`
-	ContainerPort      types.Number   `tfsdk:"container_port" json:"container_port"`
-	ContainerImage     types.String   `tfsdk:"container_image" json:"container_image"`
-	ContainerCommand   []types.String `tfsdk:"container_command" json:"container_command"`
-	ConnectsTo         []types.String `tfsdk:"connects_to"`
+	VpcName                    types.String   `tfsdk:"vpc_name" json:"vpc_name"`
+	Name                       types.String   `tfsdk:"name" json:"name"`
+	EnvironmentSecrets         map[string]Env `tfsdk:"environment_secrets" json:"environment_secrets"`
+	ContainerName              types.String   `tfsdk:"container_name" json:"container_name"`
+	ContainerPort              types.Number   `tfsdk:"container_port" json:"container_port"`
+	ContainerImage             types.String   `tfsdk:"container_image" json:"container_image"`
+	ContainerCommand           []types.String `tfsdk:"container_command" json:"container_command"`
+	ConnectsTo                 types.List     `tfsdk:"connects_to"`
+	ContainerRegistrySecretArn types.String   `tfsdk:"container_registry_secret_arn"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -83,6 +85,10 @@ var AssetSchema = map[string]tfsdk.Attribute{
 		Required: true,
 	},
 	"container_image": {
+		Type:     types.StringType,
+		Required: true,
+	},
+	"container_registry_secret_arn": {
 		Type:     types.StringType,
 		Required: true,
 	},
@@ -131,21 +137,20 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 		Asset:        client.CompileAsset("aws", "ecs_compute_service", plan.AssetVersion.Value),
 		AssetVersion: plan.AssetVersion.Value,
 		AssetParameters: map[string]interface{}{
-			"vpc_name":            plan.VpcName.Value,
-			"name":                plan.Name.Value,
-			"container_name":      plan.ContainerName.Value,
-			"container_image":     plan.ContainerImage.Value,
-			"container_port":      plan.ContainerPort.Value,
-			"container_command":   cmd,
-			"environment_secrets": secrets,
+			"vpc_name":                      plan.VpcName.Value,
+			"name":                          plan.Name.Value,
+			"container_name":                plan.ContainerName.Value,
+			"container_image":               plan.ContainerImage.Value,
+			"container_port":                plan.ContainerPort.Value,
+			"container_registry_secret_arn": plan.ContainerRegistrySecretArn.Value,
+			"container_command":             cmd,
+			"environment_secrets":           secrets,
 		},
 	}
 
-	if len(plan.ConnectsTo) > 0 {
+	if !plan.ConnectsTo.IsNull() && !plan.ConnectsTo.IsUnknown() {
 		connect := []string{}
-		for _, c := range plan.ConnectsTo {
-			connect = append(connect, c.Value)
-		}
+		_ = plan.ConnectsTo.ElementsAs(ctx, connect, false)
 		input.ConnectsTo = connect
 	}
 
@@ -159,10 +164,13 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 		cmd = append(cmd, types.String{Value: c.(string)})
 	}
 
-	connect := []types.String{}
-	connectList := output.ConnectsTo
-	for _, c := range connectList {
+	connect := []attr.Value{}
+	for _, c := range output.ConnectsTo {
 		connect = append(connect, types.String{Value: c})
+	}
+	connectsTo := types.List{Elems: connect, ElemType: types.StringType}
+	if len(connect) == 0 {
+		connectsTo.Null = true
 	}
 
 	// TODO: figure out how to not need an intermediate struct for marshal/unmarshal
@@ -187,19 +195,20 @@ func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceM
 	port := output.CurrentAssetParameters.Data["container_port"].(float64)
 
 	model := &ResourceModel{
-		Id:                 types.String{Value: output.Id},
-		AssetVersion:       types.String{Value: output.AssetVersion},
-		EnvironmentId:      types.String{Value: output.Environment.Id},
-		OrganizationId:     types.String{Value: output.Environment.Organization.Id},
-		Status:             types.String{Value: string(output.Status)},
-		VpcName:            types.String{Value: output.CurrentAssetParameters.Data["vpc_name"].(string)},
-		Name:               types.String{Value: output.CurrentAssetParameters.Data["name"].(string)},
-		ContainerName:      types.String{Value: output.CurrentAssetParameters.Data["container_name"].(string)},
-		ContainerPort:      types.Number{Value: big.NewFloat(port)},
-		ContainerImage:     types.String{Value: output.CurrentAssetParameters.Data["container_image"].(string)},
-		ContainerCommand:   cmd,
-		ConnectsTo:         connect,
-		EnvironmentSecrets: secrets,
+		Id:                         types.String{Value: output.Id},
+		AssetVersion:               types.String{Value: output.AssetVersion},
+		EnvironmentId:              types.String{Value: output.Environment.Id},
+		OrganizationId:             types.String{Value: output.Environment.Organization.Id},
+		Status:                     types.String{Value: string(output.Status)},
+		VpcName:                    types.String{Value: output.CurrentAssetParameters.Data["vpc_name"].(string)},
+		Name:                       types.String{Value: output.CurrentAssetParameters.Data["name"].(string)},
+		ContainerName:              types.String{Value: output.CurrentAssetParameters.Data["container_name"].(string)},
+		ContainerPort:              types.Number{Value: big.NewFloat(port)},
+		ContainerImage:             types.String{Value: output.CurrentAssetParameters.Data["container_image"].(string)},
+		ContainerRegistrySecretArn: types.String{Value: output.CurrentAssetParameters.Data["container_registry_secret_arn"].(string)},
+		ContainerCommand:           cmd,
+		ConnectsTo:                 connectsTo,
+		EnvironmentSecrets:         secrets,
 	}
 
 	return model, nil
