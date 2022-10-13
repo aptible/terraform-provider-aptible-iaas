@@ -133,25 +133,31 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 			SecretJsonKey: v.SecretJsonKey.Value,
 		})
 	}
+
+	params := map[string]interface{}{
+		"vpc_name":                      plan.VpcName.Value,
+		"name":                          plan.Name.Value,
+		"container_name":                plan.ContainerName.Value,
+		"container_image":               plan.ContainerImage.Value,
+		"container_port":                plan.ContainerPort.Value,
+		"container_command":             cmd,
+		"environment_secrets":           secrets,
+	}
+
+	if !plan.ContainerRegistrySecretArn.IsNull() && !plan.ContainerRegistrySecretArn.IsUnknown() {
+		params["container_registry_secret_arn"] = plan.ContainerRegistrySecretArn.Value
+	}
+
 	// TODO HACK: https://aptible.slack.com/archives/C03C2STPTDX/p1664478414991299
 	input := cac.AssetInput{
-		Asset:        client.CompileAsset("aws", "ecs_compute_service", plan.AssetVersion.Value),
-		AssetVersion: plan.AssetVersion.Value,
-		AssetParameters: map[string]interface{}{
-			"vpc_name":                      plan.VpcName.Value,
-			"name":                          plan.Name.Value,
-			"container_name":                plan.ContainerName.Value,
-			"container_image":               plan.ContainerImage.Value,
-			"container_port":                plan.ContainerPort.Value,
-			"container_registry_secret_arn": plan.ContainerRegistrySecretArn.Value,
-			"container_command":             cmd,
-			"environment_secrets":           secrets,
-		},
+		Asset:           client.CompileAsset("aws", "ecs_compute_service", plan.AssetVersion.Value),
+		AssetVersion:    plan.AssetVersion.Value,
+		AssetParameters: params,
 	}
 
 	if !plan.ConnectsTo.IsNull() && !plan.ConnectsTo.IsUnknown() {
 		connect := []string{}
-		_ = plan.ConnectsTo.ElementsAs(ctx, connect, false)
+		_ = plan.ConnectsTo.ElementsAs(ctx, &connect, false)
 		input.ConnectsTo = connect
 	}
 

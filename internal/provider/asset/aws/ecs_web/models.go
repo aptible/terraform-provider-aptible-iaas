@@ -161,18 +161,21 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 	}
 
 	params := map[string]interface{}{
-		"vpc_name":                      plan.VpcName.Value,
-		"name":                          plan.Name.Value,
-		"is_public":                     plan.IsPublic.Value,
-		"lb_cert_arn":                   plan.LbCertArn.Value,
-		"lb_cert_domain":                dd[1],
-		"lb_cert_subdomain":             dd[0],
-		"container_name":                plan.ContainerName.Value,
-		"container_image":               plan.ContainerImage.Value,
-		"container_port":                plan.ContainerPort.Value,
-		"container_registry_secret_arn": plan.ContainerRegistrySecretArn.Value,
-		"container_command":             cmd,
-		"environment_secrets":           secrets,
+		"vpc_name":            plan.VpcName.Value,
+		"name":                plan.Name.Value,
+		"is_public":           plan.IsPublic.Value,
+		"lb_cert_arn":         plan.LbCertArn.Value,
+		"lb_cert_domain":      dd[1],
+		"lb_cert_subdomain":   dd[0],
+		"container_name":      plan.ContainerName.Value,
+		"container_image":     plan.ContainerImage.Value,
+		"container_port":      plan.ContainerPort.Value,
+		"container_command":   cmd,
+		"environment_secrets": secrets,
+	}
+
+	if !plan.ContainerRegistrySecretArn.IsNull() && !plan.ContainerRegistrySecretArn.IsUnknown() {
+		params["container_registry_secret_arn"] = plan.ContainerRegistrySecretArn.Value
 	}
 
 	input := cac.AssetInput{
@@ -183,7 +186,7 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 
 	if !plan.ConnectsTo.IsNull() && !plan.ConnectsTo.IsUnknown() {
 		connect := []string{}
-		_ = plan.ConnectsTo.ElementsAs(ctx, connect, false)
+		_ = plan.ConnectsTo.ElementsAs(ctx, &connect, false)
 		input.ConnectsTo = connect
 	}
 

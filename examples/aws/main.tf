@@ -145,8 +145,6 @@ resource "aptible_aws_ecs_web" "web" {
   # container_registry_secret_arn = aptible_aws_secret.secrets.registry_creds # optional
   is_public           = true # optional
   container_command   = [
-    "python",
-    "-m",
     "gunicorn",
     "app:app",
     "-b",
