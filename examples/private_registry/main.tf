@@ -9,14 +9,6 @@ terraform {
   }
 }
 
-provider "aws" {
-  region = "us-east-1"
-}
-
-provider "aptible" {
-  host = "cloud-api.cloud.aptible.com"
-}
-
 variable "organization_id" {
   type    = string
 }
@@ -25,12 +17,32 @@ variable "environment_id" {
   type    = string
 }
 
+variable "aptible_host" {
+  type    = string
+}
+
+variable "fqdn" {
+  type    = string
+}
+
+variable "domain" {
+  type = string
+}
+
 variable "secret_registry" {
   type    = map(string)
   default = {
     username = ""
     password = ""
   }
+}
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+provider "aptible" {
+  host = var.host
 }
 
 data "aptible_organization" "org" {
@@ -62,13 +74,13 @@ resource "aptible_aws_acm" "cert" {
   organization_id   = data.aptible_organization.org.id
 
   asset_version     = "v0.26.1"
-  fqdn              = "erock.aptible-test-leeroy.com"
+  fqdn              = var.fqdn
 
   validation_method = "DNS" # optional
 }
 
 data "aws_route53_zone" "domains" {
-  name         = "aptible-test-leeroy.com"
+  name         = var.domain
   private_zone = false
 }
 

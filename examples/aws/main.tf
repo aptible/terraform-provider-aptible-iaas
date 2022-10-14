@@ -9,20 +9,24 @@ terraform {
   }
 }
 
-provider "aws" {
-  region = "us-east-1"
-}
-
-provider "aptible" {
-  host = "cloud-api.cloud.aptible.com"
-}
-
 variable "organization_id" {
   type    = string
 }
 
 variable "environment_id" {
   type    = string
+}
+
+variable "aptible_host" {
+  type    = string
+}
+
+variable "fqdn" {
+  type    = string
+}
+
+variable "domain" {
+  type = string
 }
 
 variable "secrets" {
@@ -33,11 +37,13 @@ variable "secrets" {
   }
 }
 
-# -OR-
-# variable "secret_pass" {
-#   type    = string
-#   default = "123"
-# }
+provider "aws" {
+  region = "us-east-1"
+}
+
+provider "aptible" {
+  host = var.aptible_host
+}
 
 data "aptible_organization" "org" {
   id = var.organization_id
@@ -51,17 +57,16 @@ data "aptible_environment" "env" {
 resource "aptible_aws_secret" "secrets" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  asset_version   = "latest"
-  name            = "mysecrets"
+  asset_version   = "v0.26.1"
+  name            = "nextsecrets"
   secret_string   = jsonencode(var.secrets)
-  # secret_string   = var.secret_pass
 }
 
 resource "aptible_aws_vpc" "network" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  asset_version   = "latest"
-  name            = "myvpc" # optional
+  asset_version   = "v0.26.1"
+  name            = "nextvpc" # optional
 }
 
 resource "aptible_aws_rds" "db" {
@@ -69,8 +74,8 @@ resource "aptible_aws_rds" "db" {
   organization_id = data.aptible_organization.org.id
   vpc_name        = aptible_aws_vpc.network.name
 
-  asset_version   = "latest" # force new
-  name            = "mydb" # force new
+  asset_version   = "v0.26.1" # force new
+  name            = "nextdb" # force new
   engine          = "postgres" # force new
   engine_version  = "14" # force new
 }
@@ -80,8 +85,8 @@ resource "aptible_aws_redis" "cache" {
   organization_id     = data.aptible_organization.org.id
   vpc_name            = aptible_aws_vpc.network.name
 
-  asset_version       = "latest"
-  name                = "mycache"
+  asset_version       = "v0.26.1"
+  name                = "nextcache"
 
   description         = "integration testing" # optional
   snapshot_window     = "00:00-01:00" # optional
@@ -92,14 +97,14 @@ resource "aptible_aws_acm" "cert" {
   environment_id    = data.aptible_environment.env.id
   organization_id   = data.aptible_organization.org.id
 
-  asset_version     = "latest"
-  fqdn              = "eric.aptible-test-leeroy.com"
+  asset_version     = "v0.26.1"
+  fqdn              = var.fqdn
 
   validation_method = "DNS" # optional
 }
 
 data "aws_route53_zone" "domains" {
-  name         = "aptible-test-leeroy.com"
+  name         = var.domain
   private_zone = false
 }
 
@@ -134,15 +139,14 @@ resource "aptible_aws_ecs_web" "web" {
   vpc_name            = aptible_aws_vpc.network.name
   depends_on          = [time_sleep.wait_30_seconds]
 
-  asset_version       = "latest"
-  name                = "myapp"
-  container_name      = "myapp"
+  asset_version       = "v0.26.1"
+  name                = "nextapp"
+  container_name      = "nextapp"
   container_image     = "quay.io/aptible/deploy-demo-app"
   lb_cert_arn         = aptible_aws_acm.cert.arn
   lb_cert_domain      = aptible_aws_acm.cert.fqdn
 
   connects_to       = [aptible_aws_rds.db.id, aptible_aws_redis.cache.id] # optional, for connecting to other resources
-  # container_registry_secret_arn = aptible_aws_secret.secrets.registry_creds # optional
   is_public           = true # optional
   container_command   = [
     "gunicorn",
@@ -156,7 +160,6 @@ resource "aptible_aws_ecs_web" "web" {
     PASS = {
       secret_arn      = aptible_aws_secret.secrets.arn
       secret_json_key = "pass"
-      # secret_json_key = ""
     }
     DATABASE_URL = {
       secret_arn      = aptible_aws_rds.db.uri_secret_arn
@@ -179,20 +182,18 @@ resource "aptible_aws_ecs_compute" "worker" {
   organization_id     = data.aptible_organization.org.id
   vpc_name            = aptible_aws_vpc.network.name
 
-  asset_version       = "latest"
-  name                = "myworker"
-  container_name      = "myworker"
+  asset_version       = "v0.26.1"
+  name                = "nextworker"
+  container_name      = "nextworker"
   container_image     = "quay.io/aptible/deploy-demo-app"
 
   connects_to       = [aptible_aws_rds.db.id, aptible_aws_redis.cache.id] # optional, for connecting to other resources
-  # container_registry_secret_arn = aptible_aws_secret.secrets.registry_creds # optional
   container_command   = ["python", "-m", "worker"] # optional
   container_port      = 5001 # optional
   environment_secrets = { # optional
     PASS = {
       secret_arn      = aptible_aws_secret.secrets.arn
       secret_json_key = "pass"
-      # secret_json_key = ""
     }
     DATABASE_URL = {
       secret_arn      = aptible_aws_rds.db.uri_secret_arn
