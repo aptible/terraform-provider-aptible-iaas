@@ -97,7 +97,7 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		},
 	)
 
-	nextPlan, err := assetOutputToPlan(ctx, createdAsset)
+	nextPlan, err := assetOutputToPlan(ctx, plan, createdAsset)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating asset",
@@ -136,7 +136,7 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		return
 	}
 
-	nextPlan, err = assetOutputToPlan(ctx, completedAsset)
+	nextPlan, err = assetOutputToPlan(ctx, plan, completedAsset)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating asset",
@@ -178,7 +178,7 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 		return
 	}
 
-	asset, err := assetOutputToPlan(ctx, assetClientOutput)
+	asset, err := assetOutputToPlan(ctx, state, assetClientOutput)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error get asset when trying to update (refreshing state)",
@@ -264,7 +264,7 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 		return
 	}
 
-	stateToSet, err := assetOutputToPlan(ctx, completedAsset)
+	stateToSet, err := assetOutputToPlan(ctx, plan, completedAsset)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error get asset when trying to update (refreshing state)",
