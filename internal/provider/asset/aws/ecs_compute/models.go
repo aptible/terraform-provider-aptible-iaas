@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -171,14 +170,17 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		cmd = append(cmd, types.String{Value: c.(string)})
 	}
 
-	connect := []attr.Value{}
+	/* connect := []attr.Value{}
 	for _, c := range output.ConnectsTo {
 		connect = append(connect, types.String{Value: c})
 	}
 	connectsTo := types.List{Elems: connect, ElemType: types.StringType}
 	if len(connect) == 0 {
 		connectsTo.Null = true
-	}
+	} */
+	// TODO: HACK we are not keeping what the API sends us because the API changes the
+	// order which causes terraform to error
+	connectsTo := plan.ConnectsTo
 
 	// TODO: figure out how to not need an intermediate struct for marshal/unmarshal
 	secretsJson := []EnvJson{}
