@@ -193,7 +193,7 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 	return input, nil
 }
 
-func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceModel, error) {
+func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.AssetOutput) (*ResourceModel, error) {
 	cmd := []types.String{}
 	cmdList := output.CurrentAssetParameters.Data["container_command"].([]interface{})
 	for _, c := range cmdList {
