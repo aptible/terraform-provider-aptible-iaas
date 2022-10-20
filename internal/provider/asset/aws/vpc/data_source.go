@@ -90,7 +90,7 @@ func (r *VPCDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	vpc, err := r.client.DescribeAsset(ctx, config.OrganizationId.Value, config.EnvironmentId.Value, config.Id.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error retrieving org",
+			"Error retrieving vpc",
 			err.Error(),
 		)
 		return
