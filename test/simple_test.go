@@ -74,13 +74,6 @@ func case2(t *testing.T, ctx context.Context, c client.CloudClient, baseVariable
 }
 
 func TestTerraformSimple(t *testing.T) {
-	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: SimpleTestCaseDir,
-	})
-	defer terraform.Destroy(t, terraformOptions)
-
-	checkEnvVars(t)
-
 	baseVariables := map[string]interface{}{
 		"organization_id": os.Getenv("ORGANIZATION_ID"),
 		"environment_id":  os.Getenv("ENVIRONMENT_ID"),
@@ -89,6 +82,13 @@ func TestTerraformSimple(t *testing.T) {
 		"domain":          "this-should-never-work.aptible-cloud-staging.com",
 	}
 
+	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+		TerraformDir: SimpleTestCaseDir,
+		Vars:         baseVariables,
+	})
+	defer terraform.Destroy(t, terraformOptions)
+
+	checkEnvVars(t)
 	c := client.NewClient(
 		true,
 		baseVariables["aptible_host"].(string),
