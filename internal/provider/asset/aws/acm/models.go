@@ -10,6 +10,7 @@ import (
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/util"
 )
 
 var resourceTypeName = "_aws_acm"
@@ -66,7 +67,7 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	},
 	"asset_version": {
 		Type:     types.StringType,
-		Required: true,
+		Computed: true,
 	},
 	"fqdn": {
 		Type:     types.StringType,
@@ -111,8 +112,8 @@ var AssetSchema = map[string]tfsdk.Attribute{
 
 func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, error) {
 	input := cac.AssetInput{
-		Asset:        client.CompileAsset("aws", "acm_certificate", plan.AssetVersion.Value),
-		AssetVersion: plan.AssetVersion.Value,
+		Asset:        client.CompileAsset("aws", "acm_certificate", assetutil.DefaultAssetVersion),
+		AssetVersion: assetutil.DefaultAssetVersion,
 		AssetParameters: map[string]interface{}{
 			"fqdn":              plan.Fqdn.Value,
 			"validation_method": plan.ValidationMethod.Value,
