@@ -57,7 +57,6 @@ data "aptible_environment" "env" {
 resource "aptible_aws_secret" "registry" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  asset_version   = "v0.26.1"
   name            = "registry"
   secret_string   = jsonencode(var.secret_registry)
 }
@@ -65,7 +64,6 @@ resource "aptible_aws_secret" "registry" {
 resource "aptible_aws_vpc" "network" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  asset_version   = "v0.26.1"
   name            = "priv" # optional
 }
 
@@ -73,7 +71,6 @@ resource "aptible_aws_acm" "cert" {
   environment_id    = data.aptible_environment.env.id
   organization_id   = data.aptible_organization.org.id
 
-  asset_version     = "v0.26.1"
   fqdn              = var.fqdn
 
   validation_method = "DNS" # optional
@@ -115,7 +112,6 @@ resource "aptible_aws_ecs_web" "web" {
   vpc_name            = aptible_aws_vpc.network.name
   depends_on          = [time_sleep.wait_30_seconds]
 
-  asset_version       = "v0.26.1"
   name                = "privimg"
   container_name      = "privimg"
   container_image     = "ghcr.io/aptible/docker-hello-world-private:main"

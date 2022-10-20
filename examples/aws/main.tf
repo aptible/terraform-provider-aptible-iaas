@@ -57,7 +57,6 @@ data "aptible_environment" "env" {
 resource "aptible_aws_secret" "secrets" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  asset_version   = "v0.26.1"
   name            = "nextsecrets"
   secret_string   = jsonencode(var.secrets)
 }
@@ -65,7 +64,6 @@ resource "aptible_aws_secret" "secrets" {
 resource "aptible_aws_vpc" "network" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  asset_version   = "v0.26.1"
   name            = "nextvpc" # optional
 }
 
@@ -74,7 +72,6 @@ resource "aptible_aws_rds" "db" {
   organization_id = data.aptible_organization.org.id
   vpc_name        = aptible_aws_vpc.network.name
 
-  asset_version   = "v0.26.1" # force new
   name            = "nextdb" # force new
   engine          = "postgres" # force new
   engine_version  = "14" # force new
@@ -85,7 +82,6 @@ resource "aptible_aws_redis" "cache" {
   organization_id     = data.aptible_organization.org.id
   vpc_name            = aptible_aws_vpc.network.name
 
-  asset_version       = "v0.26.1"
   name                = "nextcache"
 
   description         = "integration testing" # optional
@@ -97,7 +93,6 @@ resource "aptible_aws_acm" "cert" {
   environment_id    = data.aptible_environment.env.id
   organization_id   = data.aptible_organization.org.id
 
-  asset_version     = "v0.26.1"
   fqdn              = var.fqdn
 
   validation_method = "DNS" # optional
@@ -139,7 +134,6 @@ resource "aptible_aws_ecs_web" "web" {
   vpc_name            = aptible_aws_vpc.network.name
   depends_on          = [time_sleep.wait_30_seconds]
 
-  asset_version       = "v0.26.1"
   name                = "nextapp"
   container_name      = "nextapp"
   container_image     = "quay.io/aptible/deploy-demo-app"
@@ -182,7 +176,6 @@ resource "aptible_aws_ecs_compute" "worker" {
   organization_id     = data.aptible_organization.org.id
   vpc_name            = aptible_aws_vpc.network.name
 
-  asset_version       = "v0.26.1"
   name                = "nextworker"
   container_name      = "nextworker"
   container_image     = "quay.io/aptible/deploy-demo-app"
