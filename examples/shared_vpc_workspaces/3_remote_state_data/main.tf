@@ -36,9 +36,7 @@ data "aptible_environment" "env" {
 data "aptible_aws_vpc" "main" {
   env_id    = data.aptible_environment.id
   org_id    = data.aptible_organization.org.id
-  name      = data.terraform_remote_state.vpc.name
-  # id
-  # name
+  id        = data.terraform_remote_state.vpc.id
 }
 
 resource "aptible_aws_rds" "db" {
