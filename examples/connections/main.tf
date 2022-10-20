@@ -29,7 +29,6 @@ provider "aptible" {
 resource "aptible_aws_vpc" "network" {
   environment_id  = var.env_id
   organization_id = var.org_id
-  asset_version   = "v0.26.1"
   name            = "conn" # optional
 }
 
@@ -37,7 +36,6 @@ resource "aptible_aws_acm" "cert" {
   environment_id    = var.env_id
   organization_id   = var.org_id
 
-  asset_version     = "v0.26.1"
   fqdn              = var.fqdn
 
   validation_method = "DNS" # optional
@@ -48,7 +46,6 @@ resource "aptible_aws_ecs_web" "web" {
   organization_id     = var.env_id
   vpc_name            = aptible_aws_vpc.network.name
 
-  asset_version       = "v0.26.1"
   name                = "nginx"
   container_name      = "nginx"
   container_image     = "nginx/alpine"

@@ -25,7 +25,6 @@ resource "aptible_null_simple" "network" {
 
   asset_type = "simple"
   asset_platform = "null"
-  asset_version  = "latest"
 
   name                   = "my_null"
 }

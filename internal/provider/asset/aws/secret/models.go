@@ -8,6 +8,7 @@ import (
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	assetutil "github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/util"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/util"
 )
 
@@ -51,7 +52,7 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	},
 	"asset_version": {
 		Type:     types.StringType,
-		Required: true,
+		Computed: true,
 	},
 	"name": {
 		Type:     types.StringType,
@@ -75,8 +76,8 @@ var AssetSchema = map[string]tfsdk.Attribute{
 
 func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, error) {
 	input := cac.AssetInput{
-		Asset:        client.CompileAsset("aws", "secret_manager", plan.AssetVersion.Value),
-		AssetVersion: plan.AssetVersion.Value,
+		Asset:        client.CompileAsset("aws", "secret_manager", assetutil.DefaultAssetVersion),
+		AssetVersion: assetutil.DefaultAssetVersion,
 		AssetParameters: map[string]interface{}{
 			"name":          plan.Name.Value,
 			"secret_string": plan.SecretString.Value,
