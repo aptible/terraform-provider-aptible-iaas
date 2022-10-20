@@ -3,13 +3,19 @@
 To install the provider locally, run:
 
 ```bash
-make local-install
+make
 ```
 
-Or, for ARM 64 architectures:
+Or, for mac ARM 64 architectures:
 
 ```bash
-LOCAL_ARCH=arm64 make local-install
+GOOS=darwin GOARCH=arm64 make
+```
+
+Linux:
+
+```bash
+GOOS=linux GOARCH=amd64 make
 ```
 
 ## Run
