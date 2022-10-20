@@ -126,7 +126,7 @@ type DnsData struct {
 	Data []DnsValidationRecordJson `json:"data"`
 }
 
-func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceModel, error) {
+func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.AssetOutput) (*ResourceModel, error) {
 	outputs := *output.Outputs
 
 	mapper := map[string]attr.Type{

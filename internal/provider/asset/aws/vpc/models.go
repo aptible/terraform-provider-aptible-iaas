@@ -67,7 +67,7 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 	return input, nil
 }
 
-func assetOutputToPlan(ctx context.Context, output *cac.AssetOutput) (*ResourceModel, error) {
+func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.AssetOutput) (*ResourceModel, error) {
 	vpc := &ResourceModel{
 		Id:             types.String{Value: output.Id},
 		AssetVersion:   types.String{Value: output.AssetVersion},
