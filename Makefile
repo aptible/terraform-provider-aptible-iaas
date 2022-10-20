@@ -23,7 +23,7 @@ install: clean build
 	@echo "Installed as provider aptible.com/aptible/aptible-iaas version 0.0.0+local"
 
 test:
-	go test ./... || exit 1
+	cd test && go test -v || exit 1
 .PHONY: test
 
 testacc:

@@ -100,9 +100,9 @@ func TestTerraformSimple(t *testing.T) {
 
 	// add secret only (fast asset)
 	// ---- test 1
-	case1(t, ctx, c, baseVariables)
+	case1(t, ctx, c, copy(baseVariables))
 
 	// add vpc to secrets
 	// ---- test 2
-	case2(t, ctx, c, baseVariables)
+	case2(t, ctx, c, copy(baseVariables))
 }

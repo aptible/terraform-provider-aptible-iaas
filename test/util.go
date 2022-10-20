@@ -7,6 +7,14 @@ import (
 	"github.com/gruntwork-io/terratest/modules/terraform"
 )
 
+func copy(map1 map[string]interface{}) map[string]interface{} {
+	map2 := make(map[string]interface{})
+	for key, value := range map1 {
+		map2[key] = value
+	}
+	return map2
+}
+
 func checkEnvVars(t *testing.T) {
 
 	if os.Getenv("ENVIRONMENT_ID") == "" {
