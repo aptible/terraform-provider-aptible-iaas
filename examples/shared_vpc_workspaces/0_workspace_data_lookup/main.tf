@@ -18,7 +18,7 @@ variable "environment_id" {
   type    = string
 }
 
-variable "vpc_id" {
+variable "vpc_name" {
   type = string
 }
 
@@ -38,5 +38,5 @@ data "aptible_environment" "env" {
 data "aptible_aws_vpc" "main" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  id              = var.vpc_id
+  name            = var.vpc_name
 }

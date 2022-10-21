@@ -98,7 +98,7 @@ func (r *VPCDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	}
 
 	var state *ResourceModel
-	for _, asset := range assets {
+	for idx, asset := range assets {
 		if strings.Contains(asset.Asset, fmt.Sprintf("%svpc%s", client.DELIMITER, client.DELIMITER)) &&
 			asset.CurrentAssetParameters.Data != nil &&
 			asset.CurrentAssetParameters.Data["name"].(string) == config.Name.Value {
@@ -113,10 +113,12 @@ func (r *VPCDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 			break
 		}
 
-		resp.Diagnostics.AddError(
-			"Error retrieving vpc",
-			fmt.Sprintf("VPC name provided of %s not found in environment", config.Name.Value),
-		)
+		if idx == len(assets)-1 {
+			resp.Diagnostics.AddError(
+				"Error retrieving vpc",
+				fmt.Sprintf("VPC name provided of %s not found in environment", config.Name.Value),
+			)
+		}
 	}
 
 	tflog.Info(ctx, "Setting state for asset", map[string]interface{}{"state": state})
