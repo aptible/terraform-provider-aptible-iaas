@@ -3,6 +3,7 @@ package vpc
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -28,7 +29,7 @@ func (r VPCDataSource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnost
 		Attributes: map[string]tfsdk.Attribute{
 			"id": {
 				Type:     types.StringType,
-				Required: true,
+				Computed: true,
 			},
 			"environment_id": {
 				Type:     types.StringType,
@@ -40,7 +41,7 @@ func (r VPCDataSource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnost
 			},
 			"name": {
 				Type:     types.StringType,
-				Computed: true,
+				Required: true,
 			},
 			"status": {
 				Type:     types.StringType,
@@ -87,7 +88,7 @@ func (r *VPCDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		return
 	}
 
-	vpc, err := r.client.DescribeAsset(ctx, config.OrganizationId.Value, config.EnvironmentId.Value, config.Id.Value)
+	assets, err := r.client.ListAssets(ctx, config.OrganizationId.Value, config.EnvironmentId.Value)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error retrieving vpc",
@@ -96,13 +97,26 @@ func (r *VPCDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		return
 	}
 
-	state := &ResourceModel{
-		Id:             types.String{Value: vpc.Id},
-		AssetVersion:   types.String{Value: vpc.AssetVersion},
-		EnvironmentId:  types.String{Value: vpc.Environment.Id},
-		OrganizationId: types.String{Value: vpc.Environment.Organization.Id},
-		Status:         types.String{Value: string(vpc.Status)},
-		Name:           types.String{Value: vpc.CurrentAssetParameters.Data["name"].(string)},
+	var state *ResourceModel
+	for _, asset := range assets {
+		if strings.Contains(asset.Asset, fmt.Sprintf("%svpc%s", client.DELIMITER, client.DELIMITER)) &&
+			asset.CurrentAssetParameters.Data != nil &&
+			asset.CurrentAssetParameters.Data["name"].(string) == config.Name.Value {
+			state = &ResourceModel{
+				Id:             types.String{Value: asset.Id},
+				AssetVersion:   types.String{Value: asset.AssetVersion},
+				EnvironmentId:  types.String{Value: asset.Environment.Id},
+				OrganizationId: types.String{Value: asset.Environment.Organization.Id},
+				Status:         types.String{Value: string(asset.Status)},
+				Name:           types.String{Value: config.Name.Value},
+			}
+			break
+		}
+
+		resp.Diagnostics.AddError(
+			"Error retrieving vpc",
+			fmt.Sprintf("VPC name provided of %s not found in environment", config.Name.Value),
+		)
 	}
 
 	tflog.Info(ctx, "Setting state for asset", map[string]interface{}{"state": state})
