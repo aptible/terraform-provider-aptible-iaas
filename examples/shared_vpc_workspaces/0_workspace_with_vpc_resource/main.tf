@@ -40,3 +40,7 @@ resource "aptible_aws_vpc" "main" {
   organization_id = data.aptible_organization.org.id
   name            = var.vpc_name
 }
+
+output "vpc_name" {
+  value = aptible_aws_vpc.main.name
+}

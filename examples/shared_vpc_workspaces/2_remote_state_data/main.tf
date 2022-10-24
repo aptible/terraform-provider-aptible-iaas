@@ -6,6 +6,16 @@ terraform {
   }
 }
 
+data "terraform_remote_state" "vpc" {
+  # there are other backends possible, but they must point to the
+  # workspace with the vpc asset
+  backend = "local"
+
+  config = {
+    path = "../0_workspace_with_vpc_resource/terraform.tfstate"
+  }
+}
+
 variable "aptible_host" {
   type    = string
 }
@@ -16,10 +26,6 @@ variable "organization_id" {
 
 variable "environment_id" {
   type    = string
-}
-
-variable "vpc_id" {
-  type = string
 }
 
 provider "aptible" {
@@ -36,9 +42,9 @@ data "aptible_environment" "env" {
 }
 
 data "aptible_aws_vpc" "main" {
-  env_id    = data.aptible_environment.id
-  org_id    = data.aptible_organization.org.id
-  id        = var.vpc_id
+  environment_id    = data.aptible_environment.env.id
+  organization_id    = data.aptible_organization.org.id
+  name        = data.terraform_remote_state.vpc.outputs.vpc_name
 }
 
 resource "aptible_aws_rds" "db" {
@@ -46,7 +52,7 @@ resource "aptible_aws_rds" "db" {
   organization_id = data.aptible_organization.org.id
   vpc_name        = data.aptible_aws_vpc.main.name
 
-  name            = "nextdb" # force new
-  engine          = "postgres" # force new
-  engine_version  = "14" # force new
+  name            = "example-2"
+  engine          = "postgres"
+  engine_version  = "14"
 }

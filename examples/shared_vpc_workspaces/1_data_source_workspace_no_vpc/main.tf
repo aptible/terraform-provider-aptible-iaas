@@ -38,5 +38,15 @@ data "aptible_environment" "env" {
 data "aptible_aws_vpc" "main" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  name            = var.vpc_name
+  name      = var.vpc_name
+}
+
+resource "aptible_aws_rds" "db" {
+  environment_id  = data.aptible_environment.env.id
+  organization_id = data.aptible_organization.org.id
+  vpc_name        = data.aptible_aws_vpc.main.name
+
+  name            = "example-1"
+  engine          = "postgres"
+  engine_version  = "14"
 }
