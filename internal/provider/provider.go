@@ -142,6 +142,7 @@ func (p *Provider) DataSources(ctx context.Context) []func() datasource.DataSour
 	return []func() datasource.DataSource{
 		organization.NewDataSource,
 		environment.NewDataSource,
+		vpc.NewDataSource,
 	}
 }
 
