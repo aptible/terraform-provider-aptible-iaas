@@ -114,8 +114,10 @@ locals {
 }
 
 resource "aptible_aws_acm_waiter" "waiter" {
-  certificate_arn   = aptible_aws_acm.cert.arn
-  validation_fqdns  = [for dns in local.validation_dns: dns.record] # optional
+  environment_id      = data.aptible_environment.env.id
+  organization_id     = data.aptible_organization.org.id
+  certificate_arn     = aptible_aws_acm.cert.arn
+  validation_fqdns    = [for dns in local.validation_dns: dns.record]
 }
 
 resource "aws_route53_record" "domains" {
