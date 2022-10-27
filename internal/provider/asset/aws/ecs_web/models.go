@@ -117,7 +117,7 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	},
 	"container_command": {
 		Type:     types.ListType{ElemType: types.StringType},
-		Required: true,
+		Optional: true,
 	},
 	"connects_to": {
 		Type:     types.ListType{ElemType: types.StringType},

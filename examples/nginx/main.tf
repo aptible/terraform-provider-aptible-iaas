@@ -21,6 +21,10 @@ variable "aptible_host" {
   type    = string
 }
 
+variable "aptible_token" {
+  type    = string
+}
+
 variable "fqdn" {
   type    = string
 }
@@ -34,7 +38,7 @@ provider "aws" {
 }
 
 provider "aptible" {
-  host = var.aptible_host
+  host  = var.aptible_host
   token = var.aptible_token
 }
 
@@ -45,8 +49,8 @@ data "aptible_aws_vpc" "network" {
 }
 
 resource "aptible_aws_acm" "cert" {
-  environment_id  = var.environment_id
-  organization_id = var.organization_id
+  environment_id    = var.environment_id
+  organization_id   = var.organization_id
   fqdn              = var.fqdn
   validation_method = "DNS" # optional
 }
@@ -77,8 +81,8 @@ resource "aws_route53_record" "domains" {
 }
 
 resource "aptible_aws_acm_waiter" "waiter" {
-  environment_id      = var.env_id
-  organization_id     = var.org_id
+  environment_id      = var.environment_id
+  organization_id     = var.organization_id
   certificate_arn     = aptible_aws_acm.cert.arn
   validation_fqdns    = [for dns in local.validation_dns: dns.record]
 }
@@ -86,7 +90,7 @@ resource "aptible_aws_acm_waiter" "waiter" {
 resource "aptible_aws_ecs_web" "web" {
   environment_id      = var.environment_id
   organization_id     = var.organization_id
-  vpc_name            = aptible_aws_vpc.network.name
+  vpc_name            = data.aptible_aws_vpc.network.name
   depends_on          = [aptible_aws_acm_waiter.waiter]
 
   name                = "nginxapp"
