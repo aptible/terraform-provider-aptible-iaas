@@ -165,6 +165,11 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 		})
 	}
 
+	envVars := plan.EnvironmentVariables
+	if envVars == nil {
+		envVars = make(map[string]string)
+	}
+
 	params := map[string]interface{}{
 		"vpc_name":              plan.VpcName.Value,
 		"name":                  plan.Name.Value,
@@ -176,8 +181,8 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 		"container_image":       plan.ContainerImage.Value,
 		"container_port":        plan.ContainerPort.Value,
 		"container_command":     cmd,
-		"environment_variables": plan.EnvironmentVariables,
 		"environment_secrets":   secrets,
+		"environment_variables": envVars,
 	}
 
 	if !plan.ContainerRegistrySecretArn.IsNull() && !plan.ContainerRegistrySecretArn.IsUnknown() {
@@ -218,14 +223,16 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 	// order which causes terraform to error
 	connectsTo := plan.ConnectsTo
 
-	envVars := map[string]string{}
-	ets, err := json.Marshal(output.CurrentAssetParameters.Data["environment_variables"])
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(ets, &envVars)
-	if err != nil {
-		return nil, err
+	envVars := make(map[string]string)
+	if _, found := output.CurrentAssetParameters.Data["environment_variables"]; found {
+		ets, err := json.Marshal(output.CurrentAssetParameters.Data["environment_variables"])
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(ets, &envVars)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// TODO: figure out how to not need an intermediate struct for marshal/unmarshal
