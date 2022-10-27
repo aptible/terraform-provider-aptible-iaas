@@ -41,7 +41,7 @@ provider "aptible" {
 data "aptible_aws_vpc" "network" {
   environment_id  = var.environment_id
   organization_id = var.organization_id
-  name = ""
+  name            = "main"
 }
 
 resource "aptible_aws_acm" "cert" {
@@ -76,11 +76,18 @@ resource "aws_route53_record" "domains" {
   depends_on      = [aptible_aws_acm.cert]
 }
 
+resource "aptible_aws_acm_waiter" "waiter" {
+  environment_id      = var.env_id
+  organization_id     = var.org_id
+  certificate_arn     = aptible_aws_acm.cert.arn
+  validation_fqdns    = [for dns in local.validation_dns: dns.record]
+}
+
 resource "aptible_aws_ecs_web" "web" {
   environment_id      = var.environment_id
   organization_id     = var.organization_id
   vpc_name            = aptible_aws_vpc.network.name
-  depends_on          = [time_sleep.wait_30_seconds]
+  depends_on          = [aptible_aws_acm_waiter.waiter]
 
   name                = "nginxapp"
   container_name      = "nginxapp"
@@ -89,7 +96,7 @@ resource "aptible_aws_ecs_web" "web" {
   lb_cert_domain      = aptible_aws_acm.cert.fqdn
 
   is_public           = true # optional
-  container_port      = 5000 # optional
+  container_port      = 80 # optional
   environment_secrets = {}
 }
 
