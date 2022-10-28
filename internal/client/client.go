@@ -54,17 +54,22 @@ func (c *Client) PrintRequestParams(tfctx context.Context, params interface{}) {
 	tflog.Debug(tfctx, "REQUEST PARAMS", map[string]interface{}{"params": string(out)})
 }
 
-func (c *Client) HandleResponse(tfctx context.Context, r *http.Response) {
+func (c *Client) HandleResponse(tfctx context.Context, r *http.Response, err error) error {
 	if r == nil {
 		fmt.Printf("The HTTP response is nil which means the request was never made.  Are you sure your API domain is set properly? (%s)\n", c.apiClient.GetConfig().Host)
-		return
+		return nil
 	}
-	c.PrintResponse(tfctx, r)
+	dump := c.PrintResponse(tfctx, r)
+	if err != nil {
+		return fmt.Errorf("%s: %s", err.Error(), dump)
+	}
+
+	return nil
 }
 
-func (c *Client) PrintResponse(tfctx context.Context, r *http.Response) {
+func (c *Client) PrintResponse(tfctx context.Context, r *http.Response) string {
 	if !c.debug {
-		return
+		return ""
 	}
 
 	reqDump, err := httputil.DumpRequestOut(r.Request, false)
@@ -79,7 +84,9 @@ func (c *Client) PrintResponse(tfctx context.Context, r *http.Response) {
 		tflog.Error(tfctx, err.Error())
 	}
 
-	tflog.Debug(tfctx, "RESPONSE", map[string]interface{}{"out": string(respDump)})
+	dump := string(respDump)
+	tflog.Debug(tfctx, "RESPONSE", map[string]interface{}{"out": dump})
+	return dump
 }
 
 func (c *Client) ListEnvironments(tfctx context.Context, orgId string) ([]cac.EnvironmentOutput, error) {
@@ -88,7 +95,7 @@ func (c *Client) ListEnvironments(tfctx context.Context, orgId string) ([]cac.En
 		OrganizationsApi.
 		OrganizationGetEnvironments(c.ctx, orgId)
 	env, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return env, err
 }
 
@@ -99,7 +106,7 @@ func (c *Client) CreateEnvironment(tfctx context.Context, orgId string, params c
 		EnvironmentCreate(c.ctx, orgId).
 		EnvironmentInput(params)
 	env, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return env, err
 }
 
@@ -113,7 +120,7 @@ func (c *Client) DescribeEnvironment(tfctx context.Context, orgId string, envId 
 			orgId,
 		).
 		Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return env, err
 }
 
@@ -127,7 +134,7 @@ func (c *Client) DestroyEnvironment(tfctx context.Context, orgId string, envId s
 			orgId,
 		).
 		Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return err
 }
 
@@ -138,7 +145,7 @@ func (c *Client) CreateOrg(tfctx context.Context, orgId string, params cac.Organ
 		OrganizationUpdate(c.ctx, orgId).
 		OrganizationInput(params)
 	org, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return org, err
 }
 
@@ -148,7 +155,7 @@ func (c *Client) FindOrg(tfctx context.Context, orgId string) (*cac.Organization
 		OrganizationsApi.
 		OrganizationGet(c.ctx, orgId).
 		Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return org, err
 }
 
@@ -162,9 +169,7 @@ func (c *Client) CreateAsset(tfctx context.Context, orgId string, envId string, 
 			orgId,
 		).AssetInput(params)
 	asset, r, err := request.Execute()
-
-	c.HandleResponse(tfctx, r)
-
+	err = c.HandleResponse(tfctx, r, err)
 	return asset, err
 }
 
@@ -179,7 +184,7 @@ func (c *Client) DestroyAsset(tfctx context.Context, orgId string, envId string,
 			orgId,
 		)
 	_, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return err
 }
 
@@ -188,7 +193,7 @@ func (c *Client) UpdateAsset(tfctx context.Context, assetId string, envId string
 		AssetUpdate(c.ctx, assetId, envId, orgId).
 		AssetInput(params)
 	asset, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return asset, err
 }
 
@@ -199,7 +204,7 @@ func (c *Client) ListAssets(tfctx context.Context, orgId string, envId string) (
 		orgId,
 	)
 	assets, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return assets, err
 }
 
@@ -212,14 +217,14 @@ func (c *Client) DescribeAsset(tfctx context.Context, orgId string, envId string
 			orgId,
 		)
 	asset, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return asset, err
 }
 
 func (c *Client) ListOrgs(tfctx context.Context) ([]cac.OrganizationOutput, error) {
 	request := c.apiClient.OrganizationsApi.OrganizationList(c.ctx)
 	orgs, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return orgs, err
 }
 
@@ -230,7 +235,7 @@ func (c *Client) ListOperationsByAsset(tfctx context.Context, orgId string, asse
 		OrganizationGetOperations(c.ctx, orgId).
 		AssetId(assetId)
 	ops, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return ops, err
 }
 
@@ -244,7 +249,7 @@ func (c *Client) ListAssetBundles(tfctx context.Context, orgId string, envId str
 			orgId,
 		)
 	bundles, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return bundles, err
 }
 
@@ -260,7 +265,7 @@ func (c *Client) GetConnection(tfctx context.Context, orgId, envId, assetId, con
 			orgId,
 		)
 	conn, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return conn, err
 }
 
@@ -276,7 +281,7 @@ func (c *Client) CreateConnection(tfctx context.Context, orgId, envId, assetId s
 		).
 		ConnectionInput(params)
 	conn, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return conn, err
 }
 
@@ -292,6 +297,6 @@ func (c *Client) DestroyConnection(tfctx context.Context, orgId, envId, assetId,
 			orgId,
 		)
 	_, r, err := request.Execute()
-	c.HandleResponse(tfctx, r)
+	err = c.HandleResponse(tfctx, r, err)
 	return err
 }
