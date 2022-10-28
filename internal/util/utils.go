@@ -16,7 +16,7 @@ import (
 var DefaultTimeToWait = 10 * time.Second
 
 // TimeToFail - maximum time to wait before failing a given operation completion
-var TimeToFail = 30 * time.Minute
+var TimeToFail = 1 * time.Hour
 
 // AssetStatusesThatIndicateCompletion - these statuses indicate the asset requested is now in a somewhat
 // final state and is ready for operations
