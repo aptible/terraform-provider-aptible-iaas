@@ -98,3 +98,22 @@ func StringVal(input interface{}) types.String {
 	}
 	return val
 }
+
+func SafeBool(obj interface{}) bool {
+	switch val := obj.(type) {
+	case bool:
+		return val
+	default:
+		return false
+	}
+}
+
+func BoolVal(input interface{}) types.Bool {
+	val := types.Bool{}
+	if input == nil {
+		val.Null = true
+	} else {
+		val.Value = SafeBool(input)
+	}
+	return val
+}

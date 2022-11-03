@@ -45,6 +45,7 @@ type ResourceModel struct {
 	ContainerCommand           []types.String `tfsdk:"container_command" json:"container_command"`
 	ConnectsTo                 types.List     `tfsdk:"connects_to"`
 	ContainerRegistrySecretArn types.String   `tfsdk:"container_registry_secret_arn"`
+	IsEcrImage                 types.Bool     `tfsdk:"is_ecr_image"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -80,6 +81,10 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	"name": {
 		Type:     types.StringType,
 		Required: true,
+	},
+	"is_ecr_image": {
+		Type:     types.BoolType,
+		Optional: true,
 	},
 	"container_name": {
 		Type:     types.StringType,
@@ -146,6 +151,10 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 
 	if !plan.ContainerRegistrySecretArn.IsNull() && !plan.ContainerRegistrySecretArn.IsUnknown() {
 		params["container_registry_secret_arn"] = plan.ContainerRegistrySecretArn.Value
+	}
+
+	if !plan.IsEcrImage.IsNull() && !plan.IsEcrImage.IsUnknown() {
+		params["is_ecr_image"] = plan.IsEcrImage.Value
 	}
 
 	// TODO HACK: https://aptible.slack.com/archives/C03C2STPTDX/p1664478414991299
@@ -219,6 +228,7 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		ContainerCommand:           cmd,
 		ConnectsTo:                 connectsTo,
 		EnvironmentSecrets:         secrets,
+		IsEcrImage:                 util.BoolVal(output.CurrentAssetParameters.Data["is_ecr_image"]),
 	}
 
 	return model, nil
