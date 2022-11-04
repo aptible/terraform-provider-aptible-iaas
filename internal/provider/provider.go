@@ -50,14 +50,19 @@ func (p *Provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics)
 				Type:     types.StringType,
 				Optional: true,
 			},
+			"auth_host": {
+				Type:     types.StringType,
+				Optional: true,
+			},
 		},
 	}, nil
 }
 
 // providerData schema struct
 type providerData struct {
-	Token types.String `tfsdk:"token"`
-	Host  types.String `tfsdk:"host"`
+	Token    types.String `tfsdk:"token"`
+	AuthHost types.String `tfsdk:"auth_host"`
+	Host     types.String `tfsdk:"host"`
 }
 
 func extractValueFromTokensJson(config *providerData) string {
@@ -77,9 +82,9 @@ func extractValueFromTokensJson(config *providerData) string {
 	}
 
 	// find if in host and specified
-	if !config.Host.Null {
-		if _, found := output[config.Host.Value]; found {
-			return output[config.Host.Value].(string)
+	if !config.AuthHost.Null {
+		if _, found := output[config.AuthHost.Value]; found {
+			return output[config.AuthHost.Value].(string)
 		}
 	}
 
