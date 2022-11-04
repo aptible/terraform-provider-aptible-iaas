@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -59,6 +60,37 @@ type providerData struct {
 	Host  types.String `tfsdk:"host"`
 }
 
+func extractValueFromTokensJson(config *providerData) string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		// skip over this, silently?
+		return config.Token.Value
+	}
+	tokensJson, err := os.ReadFile(homeDir + "/.aptible/tokens.json")
+	if err != nil {
+		return config.Token.Value
+	}
+
+	var output map[string]interface{}
+	if err = json.Unmarshal(tokensJson, &output); err != nil {
+		return config.Token.Value
+	}
+
+	// find if in host and specified
+	if !config.Host.Null {
+		if _, found := output[config.Host.Value]; found {
+			return output[config.Host.Value].(string)
+		}
+	}
+
+	// fall back to default host if no host specified
+	if _, found := output["https://auth.aptible.com"]; found {
+		return output["https://auth.aptible.com"].(string)
+	}
+
+	return config.Token.Value
+}
+
 func (p *Provider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	// Retrieve Provider data from configuration
 	var config providerData
@@ -79,8 +111,15 @@ func (p *Provider) Configure(ctx context.Context, req provider.ConfigureRequest,
 		return
 	}
 
+	// APTIBLE_TOKEN retrieval
+	// 1 - try to use the token passed in on the provider stanza
+	// 2 - by default, try to use the environment variable
+	// 3 - if no environment variable specified, fall back to API token
 	if config.Token.Null {
 		token = os.Getenv("APTIBLE_TOKEN")
+		if token == "" {
+			token = extractValueFromTokensJson(&config)
+		}
 	} else {
 		token = config.Token.Value
 	}
