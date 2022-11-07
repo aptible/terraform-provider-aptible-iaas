@@ -1,4 +1,4 @@
-package rds
+package vpc
 
 import (
 	"context"
@@ -15,12 +15,6 @@ import (
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 )
 
-func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
-	terraform.Destroy(t, terraformOptions)
-
-	// test / assert all failures here
-}
-
 func TestRDS(t *testing.T) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: ".",
@@ -29,11 +23,10 @@ func TestRDS(t *testing.T) {
 			"organization_id": os.Getenv("ORGANIZATION_ID"),
 			"environment_id":  os.Getenv("ENVIRONMENT_ID"),
 			"aptible_host":    os.Getenv("APTIBLE_HOST"),
-			"database_name":   "testrds-db",
 			"vpc_name":        "testrds-vpc",
 		},
 	})
-	defer cleanupAndAssert(t, terraformOptions)
+	//defer terraform.Destroy(t, terraformOptions)
 	terraform.InitAndApply(t, terraformOptions)
 
 	c := client.NewClient(
@@ -64,24 +57,4 @@ func TestRDS(t *testing.T) {
 	assert.Nil(t, vpcAwsErr)
 	assert.GreaterOrEqual(t, len(vpcAws), 1)
 	assert.Equal(t, len(vpcAws[0].Subnets), 6)
-
-	rdsId := terraform.Output(t, terraformOptions, "rds_id")
-	rdsInstanceId := terraform.Output(t, terraformOptions, "rds_db_identifier")
-	// check cloud api's understanding of asset
-	rdsAsset, rdsErr := c.DescribeAsset(
-		ctx,
-		os.Getenv("ORGANIZATION_ID"),
-		os.Getenv("ENVIRONMENT_ID"),
-		rdsId,
-	)
-	assert.Nil(t, rdsErr)
-	assert.Equal(t, rdsAsset.Id, rdsId)
-	assert.Equal(t, rdsAsset.Status, cac.ASSETSTATUS_DEPLOYED)
-	assert.NotNil(t, rdsAsset.Outputs)
-	assert.Equal(t, rdsAsset.GetOutputs()["db_identifier"].Data.(string), rdsInstanceId)
-
-	// check aws asset state
-	rdsAws, rdsAwsErr := terratest_aws.GetRdsInstanceDetailsE(t, rdsInstanceId, "us-east-1")
-	assert.Nil(t, rdsAwsErr)
-	assert.Equal(t, *rdsAws.DBInstanceStatus, "available")
 }
