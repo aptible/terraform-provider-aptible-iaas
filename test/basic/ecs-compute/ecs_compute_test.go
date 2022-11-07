@@ -36,7 +36,7 @@ func TestECSCompute(t *testing.T) {
 			"vpc_name":          "testecs-compute-vpc",
 		},
 	})
-	//defer cleanupAndAssert(t, terraformOptions)
+	defer cleanupAndAssert(t, terraformOptions)
 	terraform.InitAndApply(t, terraformOptions)
 
 	c := client.NewClient(
