@@ -36,7 +36,7 @@ func TestECSCompute(t *testing.T) {
 			"vpc_name":          "testecs-compute-vpc",
 		},
 	})
-	defer cleanupAndAssert(t, terraformOptions)
+	//defer cleanupAndAssert(t, terraformOptions)
 	terraform.InitAndApply(t, terraformOptions)
 
 	c := client.NewClient(
@@ -81,5 +81,11 @@ func TestECSCompute(t *testing.T) {
 	assert.Equal(t, ecsComputeAsset.Status, cac.ASSETSTATUS_DEPLOYED)
 	assert.NotNil(t, ecsComputeAsset.Outputs)
 
-	// TODO - ecs id checks with terratest utils
+	// check aws asset state
+	ecsClusterAws, ecsClusterAwsErr := terratest_aws.GetEcsClusterE(t, "us-east-1", "ecs-compute-test-compute-cluster")
+	assert.Nil(t, ecsClusterAwsErr)
+	assert.Equal(t, *ecsClusterAws.Status, "ACTIVE")
+	ecsServiceAws, ecsServiceAwserr := terratest_aws.GetEcsServiceE(t, "us-east-1", "ecs-compute-test-compute-cluster", "ecs-compute-test")
+	assert.Nil(t, ecsServiceAwserr)
+	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
 }
