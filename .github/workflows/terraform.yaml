@@ -1,0 +1,15 @@
+name: Terraform fmt
+
+on:
+  push:
+
+jobs:
+  terraform_fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ^1.0.0
+      - name: Test Formatting
+        run: terraform fmt -check -recursive ./test

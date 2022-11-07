@@ -7,7 +7,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/terraform"
 )
 
-func copy(map1 map[string]interface{}) map[string]interface{} {
+func Copy(map1 map[string]interface{}) map[string]interface{} {
 	map2 := make(map[string]interface{})
 	for key, value := range map1 {
 		map2[key] = value
@@ -15,7 +15,7 @@ func copy(map1 map[string]interface{}) map[string]interface{} {
 	return map2
 }
 
-func checkEnvVars(t *testing.T) {
+func CheckEnvVars(t *testing.T) {
 
 	if os.Getenv("ENVIRONMENT_ID") == "" {
 		t.Errorf("Missing ENVIRONMENT_ID environment variable, set it!")
@@ -35,11 +35,11 @@ func checkEnvVars(t *testing.T) {
 	}
 }
 
-func stripBraces(s string) string {
+func StripBraces(s string) string {
 	return s[1 : len(s)-1]
 }
 
-func runTerratestLoop(t *testing.T, terraformOptions *terraform.Options, assertionsFunc func()) {
+func RunTerratestLoop(t *testing.T, terraformOptions *terraform.Options, assertionsFunc func()) {
 	terraform.Init(t, terraformOptions)
 
 	// plan
