@@ -1,13 +1,13 @@
 variable "organization_id" {
-  type    = string
+  type = string
 }
 
 variable "environment_id" {
-  type    = string
+  type = string
 }
 
 variable "aptible_host" {
-  type    = string
+  type = string
 }
 
 variable "database_name" {
@@ -15,5 +15,5 @@ variable "database_name" {
 }
 
 variable "vpc_name" {
-  type    = string
+  type = string
 }

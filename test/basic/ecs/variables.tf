@@ -1,13 +1,13 @@
 variable "organization_id" {
-  type    = string
+  type = string
 }
 
 variable "environment_id" {
-  type    = string
+  type = string
 }
 
 variable "aptible_host" {
-  type    = string
+  type = string
 }
 
 variable "domain" {
@@ -42,7 +42,7 @@ variable "env_vars" {
   type      = map(string)
   sensitive = true
   default = {
-    PUBLIC_VALUE    = "123"
+    PUBLIC_VALUE = "123"
   }
 }
 
@@ -50,6 +50,6 @@ variable "secrets" {
   type      = map(string)
   sensitive = true
   default = {
-    PASSWORD    = "123"
+    PASSWORD = "123"
   }
 }
