@@ -25,14 +25,14 @@ resource "aptible_aws_vpc" "network" {
   name            = var.vpc_name
 }
 
-# resource "aptible_aws_rds" "database" {
-#   environment_id  = data.aptible_environment.env.id
-#   organization_id = data.aptible_organization.org.id
+ resource "aptible_aws_rds" "database" {
+   environment_id  = data.aptible_environment.env.id
+   organization_id = data.aptible_organization.org.id
 
-#   vpc_name = aptible_aws_vpc.network.name
-#   name = var.database_name
-#   engine = "postgres"
-#   engine_version = "14.x"
-# }
+   vpc_name = aptible_aws_vpc.network.name
+   name = var.database_name
+   engine = "postgres"
+   engine_version = "14.2"
+ }
 
 

@@ -29,6 +29,7 @@ type ResourceModel struct {
 	EngineVersion    types.String `tfsdk:"engine_version" json:"engine_version"`
 	UriSecretArn     types.String `tfsdk:"uri_secret_arn" json:"uri_secret_arn"`
 	SecretsKmsKeyArn types.String `tfsdk:"secrets_kms_key_arn" json:"rds_secrets_kms_key_arn"`
+	DBIdentifier     types.String `tfsdk:"db_identifier" json:"db_identifier"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -83,6 +84,10 @@ var AssetSchema = map[string]tfsdk.Attribute{
 		Computed: true,
 		Type:     types.StringType,
 	},
+	"db_identifier": {
+		Computed: true,
+		Type:     types.StringType,
+	},
 }
 
 func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, error) {
@@ -115,6 +120,7 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		EngineVersion:    types.String{Value: output.CurrentAssetParameters.Data["engine_version"].(string)},
 		UriSecretArn:     types.String{Value: util.SafeString(outputs["uri_secret_arn"].Data)},
 		SecretsKmsKeyArn: types.String{Value: util.SafeString(outputs["rds_secrets_kms_key_arn"].Data)},
+		DBIdentifier:     types.String{Value: util.SafeString(outputs["db_identifier"].Data)},
 	}
 
 	return model, nil
