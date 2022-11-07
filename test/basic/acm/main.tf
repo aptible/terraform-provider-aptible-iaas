@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     aptible = {
-      source  = "aptible.com/aptible/aptible-iaas"
+      source = "aptible.com/aptible/aptible-iaas"
     }
     aws = {
       source = "hashicorp/aws"
@@ -10,19 +10,19 @@ terraform {
 }
 
 variable "organization_id" {
-  type    = string
+  type = string
 }
 
 variable "environment_id" {
-  type    = string
+  type = string
 }
 
 variable "aptible_host" {
-  type    = string
+  type = string
 }
 
 variable "subdomain" {
-  type    = string
+  type = string
 }
 
 variable "domain" {
@@ -30,7 +30,7 @@ variable "domain" {
 }
 
 provider "aws" {
-  alias = "aptible-account"
+  alias  = "aptible-account"
   region = "us-east-1"
 }
 
@@ -43,16 +43,16 @@ data "aptible_organization" "org" {
 }
 
 data "aptible_environment" "env" {
-  id      = var.environment_id
-  org_id  = data.aptible_organization.org.id
+  id     = var.environment_id
+  org_id = data.aptible_organization.org.id
 }
 
 
 resource "aptible_aws_acm" "cert" {
-  environment_id    = data.aptible_environment.env.id
-  organization_id   = data.aptible_organization.org.id
+  environment_id  = data.aptible_environment.env.id
+  organization_id = data.aptible_organization.org.id
 
-  fqdn              = "${var.subdomain}.${var.domain}"
+  fqdn = "${var.subdomain}.${var.domain}"
 
   validation_method = "DNS"
 }
