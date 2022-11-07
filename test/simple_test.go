@@ -25,17 +25,17 @@ func case1(t *testing.T, ctx context.Context, c client.CloudClient, baseVariable
 		TerraformDir: SimpleTestCaseDir,
 		Vars:         testCaseVars1,
 	})
-	runTerratestLoop(t, terraformOptions, func() {
+	RunTerratestLoop(t, terraformOptions, func() {
 		secretsId := terraform.Output(t, terraformOptions, "secrets_id")
 		assert.NotEmpty(t, secretsId)
 		asset, err := c.DescribeAsset(
 			ctx,
 			baseVariables["organization_id"].(string),
 			baseVariables["environment_id"].(string),
-			stripBraces(secretsId),
+			StripBraces(secretsId),
 		)
 		assert.Nil(t, err)
-		assert.Equal(t, asset.Id, stripBraces(secretsId))
+		assert.Equal(t, asset.Id, StripBraces(secretsId))
 	})
 }
 
@@ -49,7 +49,7 @@ func case2(t *testing.T, ctx context.Context, c client.CloudClient, baseVariable
 		TerraformDir: SimpleTestCaseDir,
 		Vars:         testCaseVars2,
 	})
-	runTerratestLoop(t, terraformOptions, func() {
+	RunTerratestLoop(t, terraformOptions, func() {
 		secretsId := terraform.Output(t, terraformOptions, "secrets_id")
 		vpcId := terraform.Output(t, terraformOptions, "vpc_id")
 		assert.NotEmpty(t, vpcId)
@@ -58,18 +58,18 @@ func case2(t *testing.T, ctx context.Context, c client.CloudClient, baseVariable
 			ctx,
 			baseVariables["organization_id"].(string),
 			baseVariables["environment_id"].(string),
-			stripBraces(secretsId),
+			StripBraces(secretsId),
 		)
 		assert.Nil(t, secretsErr)
-		assert.Equal(t, secretsAsset.Id, stripBraces(secretsId))
+		assert.Equal(t, secretsAsset.Id, StripBraces(secretsId))
 		vpcAsset, vpcErr := c.DescribeAsset(
 			ctx,
 			baseVariables["organization_id"].(string),
 			baseVariables["environment_id"].(string),
-			stripBraces(vpcId),
+			StripBraces(vpcId),
 		)
 		assert.Nil(t, vpcErr)
-		assert.Equal(t, vpcAsset.Id, stripBraces(vpcId))
+		assert.Equal(t, vpcAsset.Id, StripBraces(vpcId))
 	})
 }
 
@@ -88,7 +88,7 @@ func TestTerraformSimple(t *testing.T) {
 	})
 	defer terraform.Destroy(t, terraformOptions)
 
-	checkEnvVars(t)
+	CheckEnvVars(t)
 	c := client.NewClient(
 		true,
 		baseVariables["aptible_host"].(string),
@@ -100,9 +100,9 @@ func TestTerraformSimple(t *testing.T) {
 
 	// add secret only (fast asset)
 	// ---- test 1
-	case1(t, ctx, c, copy(baseVariables))
+	case1(t, ctx, c, Copy(baseVariables))
 
 	// add vpc to secrets
 	// ---- test 2
-	case2(t, ctx, c, copy(baseVariables))
+	case2(t, ctx, c, Copy(baseVariables))
 }
