@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/s3"
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -18,6 +17,7 @@ import (
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/ecs_web"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/rds"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/redis"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/s3"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/secret"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/vpc"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/environment"
