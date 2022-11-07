@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/s3"
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -135,6 +136,7 @@ func (p *Provider) Resources(ctx context.Context) []func() resource.Resource {
 		vpc.NewResource,
 		secret.NewResource,
 		ecscompute.NewResource,
+		s3.NewResource,
 	}
 }
 
