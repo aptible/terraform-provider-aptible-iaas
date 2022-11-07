@@ -58,8 +58,8 @@ resource:
 	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/ecs_compute/resources.go
 	sed -i '' 's/package acm/package ecscompute/g' ./internal/provider/asset/aws/ecs_compute/resources.go
 
-	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/s3/resources.go
-	sed -i '' 's/package acm/package s3/g' ./internal/provider/asset/aws/s3/resources.go
+	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/s3_private/resources.go
+	sed -i '' 's/package acm/package s3_private/g' ./internal/provider/asset/aws/s3_private/resources.go
 .PHONY: resource
 
 debug:

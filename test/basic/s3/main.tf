@@ -19,7 +19,7 @@ data "aptible_environment" "env" {
   org_id = data.aptible_organization.org.id
 }
 
-resource "aptible_aws_s3" "bucket_name" {
+resource "aptible_aws_s3_private" "bucket_name" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
   name            = var.bucket_name

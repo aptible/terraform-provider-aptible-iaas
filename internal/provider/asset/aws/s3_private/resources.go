@@ -4,7 +4,7 @@ aws asset resource files using `make resource`.
 
 ONLY edit aws/acm/resources.go.
 */
-package s3
+package s3_private
 
 import (
 	"context"
