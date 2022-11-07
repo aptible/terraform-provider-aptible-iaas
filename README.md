@@ -20,8 +20,32 @@ GOOS=linux GOARCH=amd64 make
 
 ## Run
 
-```bash
+Go to an example workspace as below:
+
+```sh
 cd ./examples/aws
+```
+
+### Logging in
+
+You can get credentials to work with this provider by:
+
+* setting an environment variable with `APTIBLE_TOKEN` before any `terraform` command (ex: `terraform plan`)
+* log in with the [Aptible CLI](https://deploy-docs.aptible.com/docs/cli) (`aptible login`)
+* setting a `token` stanza in your provider (like below)
+
+```hcl
+provider "aptible" {
+  host = var.aptible_host
+  token = var.token  # <--- SET THIS VALUE
+}
+```
+
+### Running Terraform Commands
+
+You should now be able to use your terraform commands without interruption
+
+```bash
 terraform init
 terraform apply
 ```

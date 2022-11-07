@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     aptible = {
-      source  = "aptible.com/aptible/aptible-iaas"
+      source = "aptible.com/aptible/aptible-iaas"
     }
   }
 }
@@ -19,8 +19,8 @@ data "aptible_organization" "org" {
 }
 
 data "aptible_environment" "env" {
-  id      = var.environment_id
-  org_id  = data.aptible_organization.org.id
+  id     = var.environment_id
+  org_id = data.aptible_organization.org.id
 }
 
 resource "aptible_aws_secret" "secrets" {
