@@ -85,6 +85,7 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	"is_ecr_image": {
 		Type:     types.BoolType,
 		Optional: true,
+		Computed: true, // if unset, will default to false returned by backend
 	},
 	"container_name": {
 		Type:     types.StringType,
