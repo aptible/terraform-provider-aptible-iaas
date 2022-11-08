@@ -22,6 +22,16 @@ install: clean build
 	cp ./bin/${BINARY}_${VERSION}_${TARGET} "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${TARGET}"
 	@echo "Installed as provider aptible.com/aptible/aptible-iaas version 0.0.0+local"
 
+
+.PHONY: pretty
+pretty: pretty-terraform pretty-go
+
+pretty-terraform:
+	terraform fmt -recursive ./test/
+
+pretty-go:
+	go fmt ./...
+
 test:
 	cd test && go test -v || exit 1
 .PHONY: test

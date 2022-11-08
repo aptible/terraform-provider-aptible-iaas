@@ -41,6 +41,7 @@ type ResourceModel struct {
 	VpcName                    types.String   `tfsdk:"vpc_name" json:"vpc_name"`
 	Name                       types.String   `tfsdk:"name" json:"name"`
 	IsPublic                   types.Bool     `tfsdk:"is_public" json:"is_public"`
+	IsEcrImage                 types.Bool     `tfsdk:"is_ecr_image"`
 	ContainerName              types.String   `tfsdk:"container_name" json:"container_name"`
 	ContainerPort              types.Number   `tfsdk:"container_port" json:"container_port"`
 	ContainerImage             types.String   `tfsdk:"container_image" json:"container_image"`
@@ -90,6 +91,10 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	"is_public": {
 		Type:     types.BoolType,
 		Required: true,
+	},
+	"is_ecr_image": {
+		Type:     types.BoolType,
+		Optional: true,
 	},
 	"lb_cert_arn": {
 		Type:     types.StringType,
@@ -178,6 +183,10 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 		params["container_registry_secret_arn"] = plan.ContainerRegistrySecretArn.Value
 	}
 
+	if !plan.IsEcrImage.IsNull() && !plan.IsEcrImage.IsUnknown() {
+		params["is_ecr_image"] = plan.IsEcrImage.Value
+	}
+
 	input := cac.AssetInput{
 		Asset:           client.CompileAsset("aws", "ecs_web_service", assetutil.DefaultAssetVersion),
 		AssetVersion:    assetutil.DefaultAssetVersion,
@@ -257,6 +266,7 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		ContainerImage:             types.String{Value: output.CurrentAssetParameters.Data["container_image"].(string)},
 		ContainerRegistrySecretArn: util.StringVal(output.CurrentAssetParameters.Data["container_registry_secret_arn"]),
 		LoadBalancerUrl:            util.StringVal(outputs["load_balancer_url"].Data),
+		IsEcrImage:                 util.BoolVal(output.CurrentAssetParameters.Data["is_ecr_image"]),
 		ConnectsTo:                 connectsTo,
 		ContainerCommand:           cmd,
 		EnvironmentSecrets:         secrets,
