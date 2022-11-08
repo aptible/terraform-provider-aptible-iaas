@@ -2,6 +2,7 @@ package ecs_compute_update
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -103,6 +104,7 @@ func TestECSComputeUpdate(t *testing.T) {
 	assert.Equal(t, vpcAsset.Status, cac.ASSETSTATUS_DEPLOYED)
 	assert.GreaterOrEqual(t, len(vpcAws), 1)
 	assert.Equal(t, len(vpcAws[0].Subnets), 6)
+	assert.Equal(t, vpcAws[0].Tags["asset_id"], vpcId)
 
 	ecsComputeId := terraform.Output(t, terraformOptions, "ecs_compute_id")
 	ecsComputeAsset, ecsClusterAws, ecsServiceAws, err := getAptibleAndAWSECSServiceAndCluster(t, ctx, c, ecsComputeId, "ecs-compute-test-compute-cluster", "ecs-compute-test")
@@ -111,14 +113,46 @@ func TestECSComputeUpdate(t *testing.T) {
 	assert.Equal(t, ecsComputeAsset.Status, cac.ASSETSTATUS_DEPLOYED)
 	assert.NotNil(t, ecsComputeAsset.Outputs)
 	assert.Equal(t, *ecsClusterAws.Status, "ACTIVE")
+	foundEcsClusterAwsAssetIdTag := false
+	for _, tag := range ecsServiceAws.Tags {
+		if *tag.Key == "asset_id" {
+			assert.Equal(t, *tag.Value, ecsComputeId)
+			foundEcsClusterAwsAssetIdTag = true
+			break
+		}
+	}
+	assert.True(t, foundEcsClusterAwsAssetIdTag)
 	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
+	foundEcsServiceAwsAssetIdTag := false
+	for _, tag := range ecsServiceAws.Tags {
+		if *tag.Key == "asset_id" {
+			assert.Equal(t, *tag.Value, ecsComputeId)
+			foundEcsServiceAwsAssetIdTag = true
+			break
+		}
+	}
+	assert.True(t, foundEcsServiceAwsAssetIdTag)
 
-	// update vpc, check destructive
+	// update vpc, check is destructive operation
 	mutableTFVariables["vpc_name"] = "testecs-compute-update-vpc"
-	_ = terraform.InitAndPlanAndShowWithStruct(t, generateMutableTerraformOptions())
+	vpcImpactedPlan := terraform.InitAndPlanAndShowWithStruct(t, generateMutableTerraformOptions())
 
 	// update enable_exec, check destructive
+	assertVPCResource := vpcImpactedPlan.ResourcePlannedValuesMap["aptible_aws_vpc.network"]
+	// TODO - remove/add assertion that is destructive
+	fmt.Println(assertVPCResource)
 
-	// update all other variables with appropriate changes and ensure no destructive operation occurs and success is
-	// possible
+	terraform.Apply(t, generateMutableTerraformOptions())
+	updatedVpcId := terraform.Output(t, terraformOptions, "vpc_id")
+
+	updatedVPCAsset, updatedVPCAws, err := getAptibleAndAWSVPCs(t, ctx, c, updatedVpcId, "testecs-compute-update-vpc")
+	assert.Nil(t, err)
+	assert.Equal(t, updatedVPCAsset.Id, updatedVpcId)
+	assert.Equal(t, updatedVPCAsset.Status, cac.ASSETSTATUS_DEPLOYED)
+	assert.GreaterOrEqual(t, len(updatedVPCAws), 1)
+	assert.Equal(t, len(updatedVPCAws[0].Subnets), 6)
+	assert.NotEqual(t, vpcAws[0].Tags["asset_id"], updatedVpcId)
+	assert.Equal(t, updatedVPCAws[0].Tags["asset_id"], updatedVpcId)
+
+	//
 }
