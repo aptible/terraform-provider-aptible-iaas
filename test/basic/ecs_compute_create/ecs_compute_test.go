@@ -1,4 +1,4 @@
-package ecs_compute
+package ecs_compute_update
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	legacy_aws_sdk_ec2 "github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/ecs"
 	terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +22,54 @@ func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
 	// test / assert all failures here
 }
 
-func TestECSCompute(t *testing.T) {
+func getAptibleAndAWSVPCs(t *testing.T, ctx context.Context, client client.CloudClient, vpcId, vpcName string) (*cac.AssetOutput, []*terratest_aws.Vpc, error) {
+	vpcAsset, err := client.DescribeAsset(
+		ctx,
+		os.Getenv("ORGANIZATION_ID"),
+		os.Getenv("ENVIRONMENT_ID"),
+		vpcId,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	vpcAws, err := terratest_aws.GetVpcsE(t, []*legacy_aws_sdk_ec2.Filter{
+		{
+			Name:   aws.String("tag:Name"),
+			Values: []*string{aws.String(vpcName)},
+		},
+	}, "us-east-1")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return vpcAsset, vpcAws, nil
+}
+
+func getAptibleAndAWSECSServiceAndCluster(t *testing.T, ctx context.Context, client client.CloudClient, ecsComputeId, ecsClusterName, ecsServiceName string) (*cac.AssetOutput, *ecs.Cluster, *ecs.Service, error) {
+	ecsComputeAsset, err := client.DescribeAsset(
+		ctx,
+		os.Getenv("ORGANIZATION_ID"),
+		os.Getenv("ENVIRONMENT_ID"),
+		ecsComputeId,
+	)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	ecsClusterAws, err := terratest_aws.GetEcsClusterE(t, "us-east-1", ecsClusterName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	ecsServiceAws, err := terratest_aws.GetEcsServiceE(t, "us-east-1", ecsClusterName, ecsServiceName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return ecsComputeAsset, ecsClusterAws, ecsServiceAws, nil
+}
+
+func TestECSComputeCreate(t *testing.T) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: ".",
 
@@ -47,45 +95,19 @@ func TestECSCompute(t *testing.T) {
 	ctx := context.Background()
 
 	vpcId := terraform.Output(t, terraformOptions, "vpc_id")
-	// check cloud api's understanding of asset
-	vpcAsset, vpcAptibleErr := c.DescribeAsset(
-		ctx,
-		os.Getenv("ORGANIZATION_ID"),
-		os.Getenv("ENVIRONMENT_ID"),
-		vpcId,
-	)
-	assert.Nil(t, vpcAptibleErr)
+	vpcAsset, vpcAws, err := getAptibleAndAWSVPCs(t, ctx, c, vpcId, "testecs-compute-vpc")
+	assert.Nil(t, err)
 	assert.Equal(t, vpcAsset.Id, vpcId)
 	assert.Equal(t, vpcAsset.Status, cac.ASSETSTATUS_DEPLOYED)
-	// check aws asset state
-	vpcAws, vpcAwsErr := terratest_aws.GetVpcsE(t, []*legacy_aws_sdk_ec2.Filter{
-		{
-			Name:   aws.String("tag:Name"),
-			Values: []*string{aws.String("testecs-compute-vpc")},
-		},
-	}, "us-east-1")
-	assert.Nil(t, vpcAwsErr)
 	assert.GreaterOrEqual(t, len(vpcAws), 1)
 	assert.Equal(t, len(vpcAws[0].Subnets), 6)
 
 	ecsComputeId := terraform.Output(t, terraformOptions, "ecs_compute_id")
-	// check cloud api's understanding of asset
-	ecsComputeAsset, ecsComputeErr := c.DescribeAsset(
-		ctx,
-		os.Getenv("ORGANIZATION_ID"),
-		os.Getenv("ENVIRONMENT_ID"),
-		ecsComputeId,
-	)
-	assert.Nil(t, ecsComputeErr)
+	ecsComputeAsset, ecsClusterAws, ecsServiceAws, err := getAptibleAndAWSECSServiceAndCluster(t, ctx, c, ecsComputeId, "ecs-compute-test-compute-cluster", "ecs-compute-test")
+	assert.Nil(t, err)
 	assert.Equal(t, ecsComputeAsset.Id, ecsComputeId)
 	assert.Equal(t, ecsComputeAsset.Status, cac.ASSETSTATUS_DEPLOYED)
 	assert.NotNil(t, ecsComputeAsset.Outputs)
-
-	// check aws asset state
-	ecsClusterAws, ecsClusterAwsErr := terratest_aws.GetEcsClusterE(t, "us-east-1", "ecs-compute-test-compute-cluster")
-	assert.Nil(t, ecsClusterAwsErr)
 	assert.Equal(t, *ecsClusterAws.Status, "ACTIVE")
-	ecsServiceAws, ecsServiceAwserr := terratest_aws.GetEcsServiceE(t, "us-east-1", "ecs-compute-test-compute-cluster", "ecs-compute-test")
-	assert.Nil(t, ecsServiceAwserr)
 	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
 }
