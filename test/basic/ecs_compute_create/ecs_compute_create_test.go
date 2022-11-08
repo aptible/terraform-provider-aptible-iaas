@@ -57,14 +57,8 @@ func getAptibleAndAWSECSServiceAndCluster(t *testing.T, ctx context.Context, cli
 		return nil, nil, nil, err
 	}
 
-	ecsClusterAws, err := terratest_aws.GetEcsClusterE(t, "us-east-1", ecsClusterName)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	ecsServiceAws, err := terratest_aws.GetEcsServiceE(t, "us-east-1", ecsClusterName, ecsServiceName)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	ecsClusterAws := terratest_aws.GetEcsCluster(t, "us-east-1", ecsClusterName)
+	ecsServiceAws := terratest_aws.GetEcsService(t, "us-east-1", ecsClusterName, ecsServiceName)
 
 	return ecsComputeAsset, ecsClusterAws, ecsServiceAws, nil
 }

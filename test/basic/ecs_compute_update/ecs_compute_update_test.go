@@ -16,6 +16,18 @@ import (
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 )
 
+var mutableTFVariables = map[string]interface{}{
+	"organization_id":   os.Getenv("ORGANIZATION_ID"),
+	"environment_id":    os.Getenv("ENVIRONMENT_ID"),
+	"aptible_host":      os.Getenv("APTIBLE_HOST"),
+	"compute_name":      "ecs-compute-test",
+	"container_command": []string{"nginx", "-g", "daemon off;"},
+	"container_image":   "nginx",
+	"container_port":    80,
+	"enable_exec":       false,
+	"vpc_name":          "testecs-compute-update-vpc",
+}
+
 func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
 	terraform.Destroy(t, terraformOptions)
 
@@ -57,36 +69,25 @@ func getAptibleAndAWSECSServiceAndCluster(t *testing.T, ctx context.Context, cli
 		return nil, nil, nil, err
 	}
 
-	ecsClusterAws, err := terratest_aws.GetEcsClusterE(t, "us-east-1", ecsClusterName)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	ecsServiceAws, err := terratest_aws.GetEcsServiceE(t, "us-east-1", ecsClusterName, ecsServiceName)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
+	ecsClusterAws := terratest_aws.GetEcsCluster(t, "us-east-1", ecsClusterName)
+	ecsServiceAws := terratest_aws.GetEcsService(t, "us-east-1", ecsClusterName, ecsServiceName)
 	return ecsComputeAsset, ecsClusterAws, ecsServiceAws, nil
 }
 
-func TestECSComputeUpdate(t *testing.T) {
-	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+// generateMutableTerraformOptions - Generates a new pointer and object of mutable reference of the variable map,
+// which is mutated over the course of the test suite to avoid specifying the full set
+func generateMutableTerraformOptions() *terraform.Options {
+	return &terraform.Options{
 		TerraformDir: ".",
+		Vars:         mutableTFVariables,
+		PlanFilePath: "./plan.out",
+	}
+}
 
-		Vars: map[string]interface{}{
-			"organization_id":   os.Getenv("ORGANIZATION_ID"),
-			"environment_id":    os.Getenv("ENVIRONMENT_ID"),
-			"aptible_host":      os.Getenv("APTIBLE_HOST"),
-			"compute_name":      "ecs-compute-test",
-			"container_command": []string{"nginx", "-g", "daemon off;"},
-			"container_image":   "nginx",
-			"container_port":    80,
-			"enable_exec":       false,
-			"vpc_name":          "testecs-compute-vpc",
-		},
-	})
-	defer cleanupAndAssert(t, terraformOptions)
-	terraform.InitAndApply(t, terraformOptions)
+func TestECSComputeUpdate(t *testing.T) {
+	terraformOptions := terraform.WithDefaultRetryableErrors(t, generateMutableTerraformOptions())
+	defer cleanupAndAssert(t, generateMutableTerraformOptions())
+	terraform.InitAndApply(t, generateMutableTerraformOptions())
 
 	c := client.NewClient(
 		true,
@@ -111,4 +112,13 @@ func TestECSComputeUpdate(t *testing.T) {
 	assert.NotNil(t, ecsComputeAsset.Outputs)
 	assert.Equal(t, *ecsClusterAws.Status, "ACTIVE")
 	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
+
+	// update vpc, check destructive
+	mutableTFVariables["vpc_name"] = "testecs-compute-update-vpc"
+	_ = terraform.InitAndPlanAndShowWithStruct(t, generateMutableTerraformOptions())
+
+	// update enable_exec, check destructive
+
+	// update all other variables with appropriate changes and ensure no destructive operation occurs and success is
+	// possible
 }
