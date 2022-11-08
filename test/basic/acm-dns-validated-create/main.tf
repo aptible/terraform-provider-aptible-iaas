@@ -75,7 +75,7 @@ locals {
 data "aws_route53_zone" "domains" {
   name         = var.domain
   private_zone = false
-  provider = aws.dns_account
+  provider     = aws.dns_account
 }
 
 resource "aws_route53_record" "domains" {
@@ -86,14 +86,14 @@ resource "aws_route53_record" "domains" {
   type            = local.validation_dns.0.type
   zone_id         = data.aws_route53_zone.domains.zone_id
   depends_on      = [aptible_aws_acm.cert]
-  provider = aws.dns_account
+  provider        = aws.dns_account
 }
 
 resource "aptible_aws_acm_waiter" "waiter" {
-  environment_id      = data.aptible_environment.env.id
-  organization_id     = data.aptible_organization.org.id
-  certificate_arn     = aptible_aws_acm.cert.arn
-  validation_fqdns    = [for dns in local.validation_dns: dns.name]
+  environment_id   = data.aptible_environment.env.id
+  organization_id  = data.aptible_organization.org.id
+  certificate_arn  = aptible_aws_acm.cert.arn
+  validation_fqdns = [for dns in local.validation_dns : dns.name]
 }
 
 output "cert_id" {
