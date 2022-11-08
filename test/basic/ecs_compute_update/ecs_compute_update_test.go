@@ -152,7 +152,7 @@ func TestECSComputeUpdate(t *testing.T) {
 		terraform.Plan(t, generateMutableTerraformOptions())
 		terraform.Apply(t, generateMutableTerraformOptions())
 		updatedVpcId := terraform.Output(t, terraformOptions, "vpc_id")
-		updatedVPCAsset, updatedVPCAws, err := getAptibleAndAWSVPCs(t, ctx, c, updatedVpcId, "testecs-compute-update-vpc")
+		updatedVPCAsset, updatedVPCAws, err := getAptibleAndAWSVPCs(t, ctx, c, updatedVpcId, "testecs-compute-vpc")
 		assert.Nil(t, err)
 		updatedECSComputeId := terraform.Output(t, terraformOptions, "ecs_compute_id")
 		updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws, err := getAptibleAndAWSECSServiceAndCluster(t, ctx, c, updatedECSComputeId, "ecs-compute-test-compute-cluster", "ecs-compute-test")
