@@ -138,6 +138,8 @@ func TestECSComputeUpdate(t *testing.T) {
 	assert.Nil(t, err)
 	assertValues(t, vpcId, ecsComputeId, vpcAsset, vpcAws, ecsComputeAsset, ecsClusterAws, ecsServiceAws)
 
+	// # DESTRUCTIVE CHECKS
+	// ## VPC name change
 	// update vpc, check is destructive operation
 	mutableTFVariables["vpc_name"] = "testecs-compute-update-vpc"
 	vpcImpactedPlan := terraform.InitAndPlanAndShowWithStruct(t, generateMutableTerraformOptions())
@@ -157,9 +159,11 @@ func TestECSComputeUpdate(t *testing.T) {
 	updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws, err := getAptibleAndAWSECSServiceAndCluster(t, ctx, c, updatedECSComputeId, "ecs-compute-test-compute-cluster", "ecs-compute-test")
 	assert.Nil(t, err)
 	assertValues(t, updatedVpcId, updatedECSComputeId, updatedVPCAsset, updatedVPCAws, updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws)
+	assert.NotEqual(t, updatedVPCAws[0].Tags["asset_id"], vpcId)
 	foundUpdatedEcsClusterAwsAssetIdTag := false
 	for _, tag := range ecsServiceAws.Tags {
 		if *tag.Key == "asset_id" {
+			assert.NotEqual(t, *tag.Value, ecsComputeId)
 			assert.Equal(t, *tag.Value, updatedECSComputeId)
 			foundUpdatedEcsClusterAwsAssetIdTag = true
 			break
@@ -170,7 +174,8 @@ func TestECSComputeUpdate(t *testing.T) {
 	foundUpdatedEcsServiceAwsAssetIdTag := false
 	for _, tag := range ecsServiceAws.Tags {
 		if *tag.Key == "asset_id" {
-			assert.Equal(t, *tag.Value, ecsComputeId)
+			assert.NotEqual(t, *tag.Value, ecsComputeId)
+			assert.Equal(t, *tag.Value, updatedECSComputeId)
 			foundUpdatedEcsServiceAwsAssetIdTag = true
 			break
 		}
@@ -180,4 +185,5 @@ func TestECSComputeUpdate(t *testing.T) {
 	// change it back
 	mutableTFVariables["vpc_name"] = "testecs-compute-vpc"
 	terraform.Apply(t, generateMutableTerraformOptions())
+	// # END DESTRUCTIVE CHECKS
 }
