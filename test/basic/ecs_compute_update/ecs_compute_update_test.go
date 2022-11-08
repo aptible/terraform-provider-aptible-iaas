@@ -75,6 +75,38 @@ func getAptibleAndAWSECSServiceAndCluster(t *testing.T, ctx context.Context, cli
 	return ecsComputeAsset, ecsClusterAws, ecsServiceAws, nil
 }
 
+func assertValues(t *testing.T, vpcId, ecsComputeId string, vpcAsset *cac.AssetOutput, vpcAws []*terratest_aws.Vpc, ecsComputeAsset *cac.AssetOutput, ecsClusterAws *ecs.Cluster, ecsServiceAws *ecs.Service) {
+	// WARNING - THIS MUST BE A BLIND HELPER TO REDUCE LOC WITH ASSERTING FROM INPUT VALS PROVIDED
+	assert.Equal(t, vpcAsset.Id, vpcId)
+	assert.Equal(t, vpcAsset.Status, cac.ASSETSTATUS_DEPLOYED)
+	assert.GreaterOrEqual(t, len(vpcAws), 1)
+	assert.Equal(t, len(vpcAws[0].Subnets), 6)
+	assert.Equal(t, vpcAws[0].Tags["asset_id"], vpcId)
+	assert.Equal(t, ecsComputeAsset.Id, ecsComputeId)
+	assert.Equal(t, ecsComputeAsset.Status, cac.ASSETSTATUS_DEPLOYED)
+	assert.NotNil(t, ecsComputeAsset.Outputs)
+	assert.Equal(t, *ecsClusterAws.Status, "ACTIVE")
+	foundEcsClusterAwsAssetIdTag := false
+	for _, tag := range ecsServiceAws.Tags {
+		if *tag.Key == "asset_id" {
+			assert.Equal(t, *tag.Value, ecsComputeId)
+			foundEcsClusterAwsAssetIdTag = true
+			break
+		}
+	}
+	assert.True(t, foundEcsClusterAwsAssetIdTag)
+	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
+	foundEcsServiceAwsAssetIdTag := false
+	for _, tag := range ecsServiceAws.Tags {
+		if *tag.Key == "asset_id" {
+			assert.Equal(t, *tag.Value, ecsComputeId)
+			foundEcsServiceAwsAssetIdTag = true
+			break
+		}
+	}
+	assert.True(t, foundEcsServiceAwsAssetIdTag)
+}
+
 // generateMutableTerraformOptions - Generates a new pointer and object of mutable reference of the variable map,
 // which is mutated over the course of the test suite to avoid specifying the full set
 func generateMutableTerraformOptions() *terraform.Options {
@@ -100,38 +132,11 @@ func TestECSComputeUpdate(t *testing.T) {
 	vpcId := terraform.Output(t, terraformOptions, "vpc_id")
 	vpcAsset, vpcAws, err := getAptibleAndAWSVPCs(t, ctx, c, vpcId, "testecs-compute-vpc")
 	assert.Nil(t, err)
-	assert.Equal(t, vpcAsset.Id, vpcId)
-	assert.Equal(t, vpcAsset.Status, cac.ASSETSTATUS_DEPLOYED)
-	assert.GreaterOrEqual(t, len(vpcAws), 1)
-	assert.Equal(t, len(vpcAws[0].Subnets), 6)
-	assert.Equal(t, vpcAws[0].Tags["asset_id"], vpcId)
 
 	ecsComputeId := terraform.Output(t, terraformOptions, "ecs_compute_id")
 	ecsComputeAsset, ecsClusterAws, ecsServiceAws, err := getAptibleAndAWSECSServiceAndCluster(t, ctx, c, ecsComputeId, "ecs-compute-test-compute-cluster", "ecs-compute-test")
 	assert.Nil(t, err)
-	assert.Equal(t, ecsComputeAsset.Id, ecsComputeId)
-	assert.Equal(t, ecsComputeAsset.Status, cac.ASSETSTATUS_DEPLOYED)
-	assert.NotNil(t, ecsComputeAsset.Outputs)
-	assert.Equal(t, *ecsClusterAws.Status, "ACTIVE")
-	foundEcsClusterAwsAssetIdTag := false
-	for _, tag := range ecsServiceAws.Tags {
-		if *tag.Key == "asset_id" {
-			assert.Equal(t, *tag.Value, ecsComputeId)
-			foundEcsClusterAwsAssetIdTag = true
-			break
-		}
-	}
-	assert.True(t, foundEcsClusterAwsAssetIdTag)
-	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
-	foundEcsServiceAwsAssetIdTag := false
-	for _, tag := range ecsServiceAws.Tags {
-		if *tag.Key == "asset_id" {
-			assert.Equal(t, *tag.Value, ecsComputeId)
-			foundEcsServiceAwsAssetIdTag = true
-			break
-		}
-	}
-	assert.True(t, foundEcsServiceAwsAssetIdTag)
+	assertValues(t, vpcId, ecsComputeId, vpcAsset, vpcAws, ecsComputeAsset, ecsClusterAws, ecsServiceAws)
 
 	// update vpc, check is destructive operation
 	mutableTFVariables["vpc_name"] = "testecs-compute-update-vpc"
@@ -147,12 +152,32 @@ func TestECSComputeUpdate(t *testing.T) {
 
 	updatedVPCAsset, updatedVPCAws, err := getAptibleAndAWSVPCs(t, ctx, c, updatedVpcId, "testecs-compute-update-vpc")
 	assert.Nil(t, err)
-	assert.Equal(t, updatedVPCAsset.Id, updatedVpcId)
-	assert.Equal(t, updatedVPCAsset.Status, cac.ASSETSTATUS_DEPLOYED)
-	assert.GreaterOrEqual(t, len(updatedVPCAws), 1)
-	assert.Equal(t, len(updatedVPCAws[0].Subnets), 6)
-	assert.NotEqual(t, vpcAws[0].Tags["asset_id"], updatedVpcId)
-	assert.Equal(t, updatedVPCAws[0].Tags["asset_id"], updatedVpcId)
 
-	//
+	updatedECSComputeId := terraform.Output(t, terraformOptions, "ecs_compute_id")
+	updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws, err := getAptibleAndAWSECSServiceAndCluster(t, ctx, c, updatedECSComputeId, "ecs-compute-test-compute-cluster", "ecs-compute-test")
+	assert.Nil(t, err)
+	assertValues(t, updatedVpcId, updatedECSComputeId, updatedVPCAsset, updatedVPCAws, updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws)
+	foundUpdatedEcsClusterAwsAssetIdTag := false
+	for _, tag := range ecsServiceAws.Tags {
+		if *tag.Key == "asset_id" {
+			assert.Equal(t, *tag.Value, updatedECSComputeId)
+			foundUpdatedEcsClusterAwsAssetIdTag = true
+			break
+		}
+	}
+	assert.True(t, foundUpdatedEcsClusterAwsAssetIdTag)
+	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
+	foundUpdatedEcsServiceAwsAssetIdTag := false
+	for _, tag := range ecsServiceAws.Tags {
+		if *tag.Key == "asset_id" {
+			assert.Equal(t, *tag.Value, ecsComputeId)
+			foundUpdatedEcsServiceAwsAssetIdTag = true
+			break
+		}
+	}
+	assert.True(t, foundUpdatedEcsServiceAwsAssetIdTag)
+
+	// change it back
+	mutableTFVariables["vpc_name"] = "testecs-compute-vpc"
+	terraform.Apply(t, generateMutableTerraformOptions())
 }
