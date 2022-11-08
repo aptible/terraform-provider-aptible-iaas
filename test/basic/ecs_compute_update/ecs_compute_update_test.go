@@ -2,6 +2,7 @@ package ecs_compute_update
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -142,12 +143,11 @@ func TestECSComputeUpdate(t *testing.T) {
 		updated  string
 		original string
 	}
-	changesToTest := []atomicChange{{
+	for _, change := range []atomicChange{{
 		key:      "compute-name",
 		updated:  "ecs-compute-updating-name-only-test",
 		original: "ecs-compute-test",
-	}}
-	for _, change := range changesToTest {
+	}} {
 		mutableTFVariables[change.key] = change.updated
 		terraform.Plan(t, generateMutableTerraformOptions())
 		terraform.Apply(t, generateMutableTerraformOptions())
@@ -155,7 +155,14 @@ func TestECSComputeUpdate(t *testing.T) {
 		updatedVPCAsset, updatedVPCAws, err := getAptibleAndAWSVPCs(t, ctx, c, updatedVpcId, "testecs-compute-vpc")
 		assert.Nil(t, err)
 		updatedECSComputeId := terraform.Output(t, terraformOptions, "ecs_compute_id")
-		updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws, err := getAptibleAndAWSECSServiceAndCluster(t, ctx, c, updatedECSComputeId, "ecs-compute-test-compute-cluster", "ecs-compute-test")
+		updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws, err := getAptibleAndAWSECSServiceAndCluster(
+			t,
+			ctx,
+			c,
+			updatedECSComputeId,
+			fmt.Sprintf("%s-compute-cluster", mutableTFVariables["compute-name"].(string)),
+			mutableTFVariables["compute-name"].(string),
+		)
 		assert.Nil(t, err)
 		assertCommonValues(t, updatedVpcId, updatedECSComputeId, updatedVPCAsset, updatedVPCAws, updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws)
 		mutableTFVariables[change.key] = change.original
