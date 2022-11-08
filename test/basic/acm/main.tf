@@ -3,9 +3,6 @@ terraform {
     aptible = {
       source = "aptible.com/aptible/aptible-iaas"
     }
-    aws = {
-      source = "hashicorp/aws"
-    }
   }
 }
 
@@ -27,11 +24,6 @@ variable "subdomain" {
 
 variable "domain" {
   type = string
-}
-
-provider "aws" {
-  alias  = "aptible-account"
-  region = "us-east-1"
 }
 
 provider "aptible" {
