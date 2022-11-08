@@ -11,6 +11,7 @@ import (
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/util"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/util"
 )
 
 var resourceTypeName = "_aws_acm"
@@ -162,15 +163,6 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		}
 	}
 
-	arnRaw := outputs["acm_certificate_arn"].Data
-	arn := ""
-	switch v := arnRaw.(type) {
-	case string:
-		arn = v
-	default:
-		arn = ""
-	}
-
 	model := &ResourceModel{
 		Id:                      types.String{Value: output.Id},
 		AssetVersion:            types.String{Value: output.AssetVersion},
@@ -179,7 +171,7 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		Status:                  types.String{Value: string(output.Status)},
 		Fqdn:                    types.String{Value: output.CurrentAssetParameters.Data["fqdn"].(string)},
 		ValidationMethod:        types.String{Value: output.CurrentAssetParameters.Data["validation_method"].(string)},
-		Arn:                     types.String{Value: arn},
+		Arn:                     types.String{Value: util.SafeString(outputs["acm_certificate_arn"].Data)},
 		DomainValidationRecords: types.List{Elems: records, ElemType: types.ObjectType{AttrTypes: mapper}},
 	}
 

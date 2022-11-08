@@ -57,6 +57,9 @@ resource:
 
 	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/ecs_compute/resources.go
 	sed -i '' 's/package acm/package ecscompute/g' ./internal/provider/asset/aws/ecs_compute/resources.go
+
+	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/acm_waiter/resources.go
+	sed -i '' 's/package acm/package acmwaiter/g' ./internal/provider/asset/aws/acm_waiter/resources.go
 .PHONY: resource
 
 debug:

@@ -14,6 +14,7 @@ import (
 
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/acm"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/acm_waiter"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/ecs_compute"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/ecs_web"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/rds"
@@ -179,6 +180,7 @@ func (p *Provider) Resources(ctx context.Context) []func() resource.Resource {
 		vpc.NewResource,
 		secret.NewResource,
 		ecscompute.NewResource,
+		acmwaiter.NewResource,
 	}
 }
 
