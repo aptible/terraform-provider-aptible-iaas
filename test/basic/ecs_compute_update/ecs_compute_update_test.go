@@ -2,7 +2,6 @@ package ecs_compute_update
 
 import (
 	"context"
-	tfjson "github.com/hashicorp/terraform-json"
 	"os"
 	"testing"
 
@@ -80,14 +79,14 @@ func assertCommonValues(t *testing.T, vpcId, ecsComputeId string, vpcAsset *cac.
 	assert.Equal(t, vpcAsset.Status, cac.ASSETSTATUS_DEPLOYED)
 	assert.GreaterOrEqual(t, len(vpcAws), 1)
 	assert.Equal(t, len(vpcAws[0].Subnets), 6)
-	assert.Equal(t, vpcAws[0].Tags["asset_id"], vpcId)
+	assert.Equal(t, vpcAws[0].Tags["aptible_asset_id"], vpcId)
 	assert.Equal(t, ecsComputeAsset.Id, ecsComputeId)
 	assert.Equal(t, ecsComputeAsset.Status, cac.ASSETSTATUS_DEPLOYED)
 	assert.NotNil(t, ecsComputeAsset.Outputs)
 	assert.Equal(t, *ecsClusterAws.Status, "ACTIVE")
 	foundEcsClusterAwsAssetIdTag := false
 	for _, tag := range ecsServiceAws.Tags {
-		if *tag.Key == "asset_id" {
+		if *tag.Key == "aptible_asset_id" {
 			assert.Equal(t, *tag.Value, ecsComputeId)
 			foundEcsClusterAwsAssetIdTag = true
 			break
@@ -97,7 +96,7 @@ func assertCommonValues(t *testing.T, vpcId, ecsComputeId string, vpcAsset *cac.
 	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
 	foundEcsServiceAwsAssetIdTag := false
 	for _, tag := range ecsServiceAws.Tags {
-		if *tag.Key == "asset_id" {
+		if *tag.Key == "aptible_asset_id" {
 			assert.Equal(t, *tag.Value, ecsComputeId)
 			foundEcsServiceAwsAssetIdTag = true
 			break
@@ -138,64 +137,27 @@ func TestECSComputeUpdate(t *testing.T) {
 	assert.Nil(t, err)
 	assertCommonValues(t, vpcId, ecsComputeId, vpcAsset, vpcAws, ecsComputeAsset, ecsClusterAws, ecsServiceAws)
 
-	// # DESTRUCTIVE CHECKS
-	// ## VPC name change
-	// update vpc, check is destructive operation
-	mutableTFVariables["vpc_name"] = "testecs-compute-update-vpc"
-	vpcImpactedPlan := terraform.InitAndPlanAndShowWithStruct(t, generateMutableTerraformOptions())
-
-	// update enable_exec, check destructive
-	assertVPCResource := vpcImpactedPlan.ResourceChangesMap["aptible_aws_vpc.network"]
-	assert.Len(t, assertVPCResource.Change.Actions, 1)
-	assert.Equal(t, assertVPCResource.Change.Actions[0], tfjson.ActionUpdate)
-	assert.Equal(t, assertVPCResource.Change.After.(map[string]interface{})["name"].(string), "testecs-compute-update-vpc")
-
-	terraform.Apply(t, generateMutableTerraformOptions())
-	updatedVpcId := terraform.Output(t, terraformOptions, "vpc_id")
-
-	updatedVPCAsset, updatedVPCAws, err := getAptibleAndAWSVPCs(t, ctx, c, updatedVpcId, "testecs-compute-update-vpc")
-	assert.Nil(t, err)
-
-	updatedECSComputeId := terraform.Output(t, terraformOptions, "ecs_compute_id")
-	updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws, err := getAptibleAndAWSECSServiceAndCluster(t, ctx, c, updatedECSComputeId, "ecs-compute-test-compute-cluster", "ecs-compute-test")
-	assert.Nil(t, err)
-	assertCommonValues(t, updatedVpcId, updatedECSComputeId, updatedVPCAsset, updatedVPCAws, updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws)
-	assert.NotEqual(t, updatedVPCAws[0].Tags["asset_id"], vpcId)
-	foundUpdatedEcsClusterAwsAssetIdTag := false
-	for _, tag := range ecsServiceAws.Tags {
-		if *tag.Key == "asset_id" {
-			assert.NotEqual(t, *tag.Value, ecsComputeId)
-			assert.Equal(t, *tag.Value, updatedECSComputeId)
-			foundUpdatedEcsClusterAwsAssetIdTag = true
-			break
-		}
+	type atomicChange struct {
+		key      string
+		updated  string
+		original string
 	}
-	assert.True(t, foundUpdatedEcsClusterAwsAssetIdTag)
-	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
-	foundUpdatedEcsServiceAwsAssetIdTag := false
-	for _, tag := range ecsServiceAws.Tags {
-		if *tag.Key == "asset_id" {
-			assert.NotEqual(t, *tag.Value, ecsComputeId)
-			assert.Equal(t, *tag.Value, updatedECSComputeId)
-			foundUpdatedEcsServiceAwsAssetIdTag = true
-			break
-		}
+	changesToTest := []atomicChange{{
+		key:      "compute-name",
+		updated:  "ecs-compute-updating-name-only-test",
+		original: "ecs-compute-test",
+	}}
+	for _, change := range changesToTest {
+		mutableTFVariables[change.key] = change.updated
+		terraform.Plan(t, generateMutableTerraformOptions())
+		terraform.Apply(t, generateMutableTerraformOptions())
+		updatedVpcId := terraform.Output(t, terraformOptions, "vpc_id")
+		updatedVPCAsset, updatedVPCAws, err := getAptibleAndAWSVPCs(t, ctx, c, updatedVpcId, "testecs-compute-update-vpc")
+		assert.Nil(t, err)
+		updatedECSComputeId := terraform.Output(t, terraformOptions, "ecs_compute_id")
+		updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws, err := getAptibleAndAWSECSServiceAndCluster(t, ctx, c, updatedECSComputeId, "ecs-compute-test-compute-cluster", "ecs-compute-test")
+		assert.Nil(t, err)
+		assertCommonValues(t, updatedVpcId, updatedECSComputeId, updatedVPCAsset, updatedVPCAws, updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws)
+		mutableTFVariables[change.key] = change.original
 	}
-	assert.True(t, foundUpdatedEcsServiceAwsAssetIdTag)
-
-	// change it back
-	mutableTFVariables["vpc_name"] = "testecs-compute-vpc"
-	terraform.Plan(t, generateMutableTerraformOptions())
-	terraform.Apply(t, generateMutableTerraformOptions())
-
-	// ## END - VPC name change
-
-	// WARNING - these ids are going to be checked, so if doing a series of tests, use these vars for their final state
-	//vpcAssetIdToCheck := updatedVpcId
-	//ecsAssetIdToCheck := updatedECSComputeId
-	// # END DESTRUCTIVE CHECKS
-
-	// # START K/V CHECKS ON UPDATES
-
-	// # END K/V CHECKS ON UPDATES
 }
