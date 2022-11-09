@@ -39,7 +39,6 @@ data "aptible_environment" "env" {
   org_id = data.aptible_organization.org.id
 }
 
-
 resource "aptible_aws_acm" "cert" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
@@ -65,4 +64,6 @@ output "fqdn" {
   value = aptible_aws_acm.cert.fqdn
 }
 
-
+output "aptible_aws_account_id" {
+  value = data.aptible_environment.env.aws_account_id
+}
