@@ -75,7 +75,7 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 	}
 
 	input := cac.AssetInput{
-		Asset:           client.CompileAsset("aws", "acm_certificate_waiter", assetutil.DefaultAssetVersion),
+		Asset:           client.CompileAsset("aws", "acm_certificate", assetutil.DefaultAssetVersion),
 		AssetVersion:    assetutil.DefaultAssetVersion,
 		AssetParameters: params,
 	}
