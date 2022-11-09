@@ -6,10 +6,6 @@ terraform {
   }
 }
 
-provider "aws" {
-  region = "us-east-1"
-}
-
 provider "aptible" {
   host = var.aptible_host
 }
@@ -23,23 +19,24 @@ data "aptible_environment" "env" {
   org_id = data.aptible_organization.org.id
 }
 
-resource "aptible_aws_secret" "secrets" {
+resource "aptible_aws_vpc" "network" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  name            = "test_secrets"
-  secret_string   = jsonencode(var.secrets)
+  name            = var.vpc_name
 }
 
-resource "aptible_aws_vpc" "vpc" {
+resource "aptible_aws_ecs_compute" "compute" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  name            = "test_vpc"
-}
+  vpc_name        = aptible_aws_vpc.network.name
 
-output "secrets_id" {
-  value = values(aptible_aws_secret.secrets).id
-}
+  name            = var.compute_name
+  container_name  = "${var.compute_name}-container"
+  container_image = var.container_image
 
-output "vpc_id" {
-  value = values(aptible_aws_vpc.vpc).id
+  container_command   = var.container_command
+  container_port      = 80
+  environment_secrets = {}
+
+  is_ecr_image = var.is_ecr_image
 }
