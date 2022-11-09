@@ -1,4 +1,4 @@
-package vpc
+package vpc_create
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 )
 
-func TestRDS(t *testing.T) {
+func TestVPCCreate(t *testing.T) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: ".",
 
@@ -26,7 +26,7 @@ func TestRDS(t *testing.T) {
 			"vpc_name":        "testrds-vpc",
 		},
 	})
-	//defer terraform.Destroy(t, terraformOptions)
+	defer terraform.Destroy(t, terraformOptions)
 	terraform.InitAndApply(t, terraformOptions)
 
 	c := client.NewClient(
@@ -57,4 +57,5 @@ func TestRDS(t *testing.T) {
 	assert.Nil(t, vpcAwsErr)
 	assert.GreaterOrEqual(t, len(vpcAws), 1)
 	assert.Equal(t, len(vpcAws[0].Subnets), 6)
+	assert.Equal(t, vpcAws[0].Name, "test-vpc")
 }
