@@ -26,7 +26,7 @@ func TestVPCCreate(t *testing.T) {
 			"vpc_name":        "test-vpc",
 		},
 	})
-	//defer terraform.Destroy(t, terraformOptions)
+	defer terraform.Destroy(t, terraformOptions)
 	terraform.InitAndApply(t, terraformOptions)
 
 	c := client.NewClient(
