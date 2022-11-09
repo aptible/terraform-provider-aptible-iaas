@@ -193,6 +193,10 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 		params["is_ecr_image"] = plan.IsEcrImage.Value
 	}
 
+	if !plan.WaitForSteadyState.IsNull() && !plan.WaitForSteadyState.IsUnknown() {
+		params["wait_for_steady_state"] = plan.WaitForSteadyState.Value
+	}
+
 	input := cac.AssetInput{
 		Asset:           client.CompileAsset("aws", "ecs_web_service", assetutil.DefaultAssetVersion),
 		AssetVersion:    assetutil.DefaultAssetVersion,
