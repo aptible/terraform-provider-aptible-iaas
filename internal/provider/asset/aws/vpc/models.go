@@ -3,7 +3,6 @@ package vpc
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -41,17 +40,11 @@ var AssetSchema = map[string]tfsdk.Attribute{
 		Description: "A valid environment id",
 		Type:        types.StringType,
 		Required:    true,
-		PlanModifiers: tfsdk.AttributePlanModifiers{
-			resource.RequiresReplace(),
-		},
 	},
 	"organization_id": {
 		Description: "A valid organization id",
 		Type:        types.StringType,
 		Required:    true,
-		PlanModifiers: tfsdk.AttributePlanModifiers{
-			resource.RequiresReplace(),
-		},
 	},
 	"asset_version": {
 		Type:     types.StringType,
@@ -60,9 +53,6 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	"name": {
 		Type:     types.StringType,
 		Required: true,
-		PlanModifiers: tfsdk.AttributePlanModifiers{
-			resource.RequiresReplace(),
-		},
 	},
 }
 
