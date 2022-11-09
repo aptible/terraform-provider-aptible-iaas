@@ -146,8 +146,12 @@ func TestECSComputeUpdate(t *testing.T) {
 		// change image to nginx => httpd and then back!
 		{{
 			key:      "container_command",
-			updated:  []string{"nginx", "-g", "daemon off;"},
+			updated:  []string{"bash", "-c", "sed -i 's/Listen 80/Listen 81/g' /usr/local/apache2/conf/httpd.conf && httpd -D FOREGROUND"},
 			original: []string{"nginx", "-g", "daemon off;"},
+		}, {
+			key:      "container_image",
+			updated:  "httpd",
+			original: "nginx",
 		}, {
 			key:      "container_port",
 			updated:  81,
