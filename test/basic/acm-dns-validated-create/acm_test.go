@@ -20,14 +20,23 @@ func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
 	terraform.Destroy(t, terraformOptions)
 	// test / assert all failures here
 }
+
+func checkSetup() {
+	_, dnsAccountSet := os.LookupEnv("DNS_AWS_ACCOUNT_ID")
+	if !dnsAccountSet {
+		fmt.Printf("DNS_AWS_ACCOUNT_ID environment variable not set\n")
+		os.Exit(1)
+	}
+}
 func TestACMDnsValidated(t *testing.T) {
+	checkSetup()
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: ".",
 		Vars: map[string]interface{}{
 			"organization_id": os.Getenv("ORGANIZATION_ID"),
 			"environment_id":  os.Getenv("ENVIRONMENT_ID"),
 			"aptible_host":    os.Getenv("APTIBLE_HOST"),
-			"dns_account_id":  "821755571104",
+			"dns_account_id":  os.Getenv("DNS_AWS_ACCOUNT_ID"),
 			"domain":          "aptible-cloud-staging.com",
 			"subdomain":       "fake-testing-cert-domain",
 		},
