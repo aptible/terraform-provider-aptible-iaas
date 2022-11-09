@@ -3,6 +3,9 @@ terraform {
     aptible = {
       source = "aptible.com/aptible/aptible-iaas"
     }
+    aws = {
+      source = "hashicorp/aws"
+    }
   }
 }
 
