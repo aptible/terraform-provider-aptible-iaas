@@ -85,15 +85,16 @@ resource "aptible_aws_ecs_web" "web" {
   vpc_name        = aptible_aws_vpc.vpc.name
   depends_on      = [aptible_aws_acm_waiter.waiter]
 
-  name            = var.ecs_name
-  container_name  = var.container_name
-  container_image = var.container_image
+  name                  = var.ecs_name
+  container_name        = var.container_name
+  container_image       = var.container_image
+  wait_for_steady_state = true
 
-  container_command = var.container_command
-  container_port    = var.container_port
-  is_public         = var.is_public
-  is_ecr_image      = var.is_ecr_image
-  lb_cert_arn       = aptible_aws_acm.cert.arn
-  lb_cert_domain    = aptible_aws_acm.cert.fqdn
+  container_command   = var.container_command
+  container_port      = var.container_port
+  is_public           = var.is_public
+  is_ecr_image        = var.is_ecr_image
+  lb_cert_arn         = aptible_aws_acm.cert.arn
+  lb_cert_domain      = aptible_aws_acm.cert.fqdn
   environment_secrets = {}
 }
