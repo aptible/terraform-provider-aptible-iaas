@@ -184,6 +184,13 @@ func TestECSComputeUpdate(t *testing.T) {
 		)
 		assert.Nil(t, err)
 		assertCommonValues(t, vpcId, updatedECSComputeId, vpcAsset, vpcAws, updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws)
+		assert.Equal(t, len(ecsServiceAws.Deployments), 1)
+		ecsTaskDefinitionAws := terratest_aws.GetEcsTaskDefinition(t, "us-east-1", *ecsServiceAws.Deployments[0].TaskDefinition)
+		assert.NotNil(t, ecsTaskDefinitionAws)
+		assert.Equal(t, ecsTaskDefinitionAws.Status, "ACTIVE")
+		assert.Equal(t, ecsTaskDefinitionAws.Family, mutableTFVariables["compute_name"].(string))
+		assert.Equal(t, len(ecsTaskDefinitionAws.ContainerDefinitions), 1)
+		assert.Equal(t, ecsTaskDefinitionAws.ContainerDefinitions[0].Image, mutableTFVariables["container_image"].(string))
 		for _, change := range changeSet {
 			mutableTFVariables[change.key] = change.original
 		}
