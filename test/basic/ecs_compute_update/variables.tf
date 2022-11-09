@@ -33,3 +33,26 @@ variable "vpc_name" {
 variable "is_ecr_image" {
   type = bool
 }
+
+variable "environment_secrets" {
+  default = {}
+  type    = map(any)
+}
+
+variable "container_registry_secret_arn" {
+  default = ""
+  type    = string
+}
+
+variable "secret_registry" {
+  default = {}
+  type    = map(any)
+}
+
+variable "secret_name" {
+  type = string
+}
+
+variable "secret_json" {
+  type = string
+}
