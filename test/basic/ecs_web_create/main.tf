@@ -98,3 +98,13 @@ resource "aptible_aws_ecs_web" "web" {
   lb_cert_domain      = aptible_aws_acm.cert.fqdn
   environment_secrets = {}
 }
+
+resource "aws_route53_record" "cname" {
+  allow_overwrite = true
+  name            = aptible_aws_acm.cert.fqdn
+  records         = [aptible_aws_ecs_web.web.load_balancer_url]
+  ttl             = 60
+  type            = "CNAME"
+  zone_id         = data.aws_route53_zone.domains.zone_id
+  provider        = aws.dns_account
+}

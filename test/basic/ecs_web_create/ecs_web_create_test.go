@@ -75,10 +75,10 @@ func getAptibleAndAWSECSServiceAndCluster(t *testing.T, ctx context.Context, cli
 }
 
 func insecureHttpClient() *http.Client {
-	tr := &http.Transport{
+	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := &http.Client{Transport: tr}
+	client := &http.Client{Transport: transport}
 	return client
 }
 
@@ -142,6 +142,7 @@ func TestECSComputeCreate(t *testing.T) {
 
 	ecsServiceUrl := terraform.Output(t, terraformOptions, "web_url")
 	ecsUrlGet, ecsUrlGetErr := http.Get(fmt.Sprintf("https://%s", ecsServiceUrl))
-	assert.Nil(t, ecsUrlGetErr)
-	assert.EqualValues(t, ecsUrlGet.StatusCode, 200)
+	if assert.NoError(t, ecsUrlGetErr) {
+		assert.EqualValues(t, ecsUrlGet.StatusCode, 200)
+	}
 }
