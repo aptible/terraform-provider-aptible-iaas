@@ -29,3 +29,7 @@ variable "container_image" {
 variable "vpc_name" {
   type = string
 }
+
+variable "is_ecr_image" {
+  type = bool
+}

@@ -26,6 +26,7 @@ var mutableTFVariables = map[string]interface{}{
 	"container_image":   "nginx",
 	"container_port":    80,
 	"vpc_name":          "testecs-compute-vpc",
+	"is_ecr_image":      false,
 }
 
 func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
@@ -85,25 +86,7 @@ func assertCommonValues(t *testing.T, vpcId, ecsComputeId string, vpcAsset *cac.
 	assert.Equal(t, ecsComputeAsset.Status, cac.ASSETSTATUS_DEPLOYED)
 	assert.NotNil(t, ecsComputeAsset.Outputs)
 	assert.Equal(t, *ecsClusterAws.Status, "ACTIVE")
-	foundEcsClusterAwsAssetIdTag := false
-	for _, tag := range ecsServiceAws.Tags {
-		if *tag.Key == "aptible_asset_id" {
-			assert.Equal(t, *tag.Value, ecsComputeId)
-			foundEcsClusterAwsAssetIdTag = true
-			break
-		}
-	}
-	assert.True(t, foundEcsClusterAwsAssetIdTag)
 	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
-	foundEcsServiceAwsAssetIdTag := false
-	for _, tag := range ecsServiceAws.Tags {
-		if *tag.Key == "aptible_asset_id" {
-			assert.Equal(t, *tag.Value, ecsComputeId)
-			foundEcsServiceAwsAssetIdTag = true
-			break
-		}
-	}
-	assert.True(t, foundEcsServiceAwsAssetIdTag)
 }
 
 // generateMutableTerraformOptions - Generates a new pointer and object of mutable reference of the variable map,
@@ -140,31 +123,67 @@ func TestECSComputeUpdate(t *testing.T) {
 
 	type atomicChange struct {
 		key      string
-		updated  string
-		original string
+		updated  interface{}
+		original interface{}
 	}
-	for _, change := range []atomicChange{{
-		key:      "compute-name",
-		updated:  "ecs-compute-updating-name-only-test",
-		original: "ecs-compute-test",
-	}} {
-		mutableTFVariables[change.key] = change.updated
+	for _, changeSet := range [][]atomicChange{
+		// change container name
+		{{
+			key:      "compute_name",
+			updated:  "ecs-compute-uname-only-test",
+			original: "ecs-compute-test",
+		}},
+		// change image to nginx => httpd and then back!
+		{{
+			key:      "container_command",
+			updated:  []string{"httpd", "-D", "FOREGROUND"},
+			original: []string{"nginx", "-g", "daemon off;"},
+		}, {
+			key:      "container_image",
+			updated:  "httpd",
+			original: "nginx",
+		}},
+		// change image to nginx => httpd and then back!
+		{{
+			key:      "container_command",
+			updated:  []string{"nginx", "-g", "daemon off;"},
+			original: []string{"nginx", "-g", "daemon off;"},
+		}, {
+			key:      "container_port",
+			updated:  81,
+			original: 80,
+		}},
+		// change image to is_ecr_image to true
+		{{
+			key:      "container_image",
+			updated:  "public.ecr.aws/nginx/nginx:1-alpine-perl",
+			original: "nginx",
+		}, {
+			key:      "is_ecr_image",
+			updated:  true,
+			original: false,
+		}},
+	} {
+		for _, change := range changeSet {
+			mutableTFVariables[change.key] = change.updated
+		}
 		terraform.Plan(t, generateMutableTerraformOptions())
 		terraform.Apply(t, generateMutableTerraformOptions())
-		updatedVpcId := terraform.Output(t, terraformOptions, "vpc_id")
-		updatedVPCAsset, updatedVPCAws, err := getAptibleAndAWSVPCs(t, ctx, c, updatedVpcId, "testecs-compute-vpc")
-		assert.Nil(t, err)
 		updatedECSComputeId := terraform.Output(t, terraformOptions, "ecs_compute_id")
 		updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws, err := getAptibleAndAWSECSServiceAndCluster(
 			t,
 			ctx,
 			c,
 			updatedECSComputeId,
-			fmt.Sprintf("%s-compute-cluster", mutableTFVariables["compute-name"].(string)),
-			mutableTFVariables["compute-name"].(string),
+			fmt.Sprintf("%s-compute-cluster", mutableTFVariables["compute_name"].(string)),
+			mutableTFVariables["compute_name"].(string),
 		)
 		assert.Nil(t, err)
-		assertCommonValues(t, updatedVpcId, updatedECSComputeId, updatedVPCAsset, updatedVPCAws, updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws)
-		mutableTFVariables[change.key] = change.original
+		assertCommonValues(t, vpcId, updatedECSComputeId, vpcAsset, vpcAws, updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws)
+		for _, change := range changeSet {
+			mutableTFVariables[change.key] = change.original
+		}
+		terraform.Plan(t, generateMutableTerraformOptions())
+		terraform.Apply(t, generateMutableTerraformOptions())
 	}
 }

@@ -37,4 +37,6 @@ resource "aptible_aws_ecs_compute" "compute" {
   container_command   = var.container_command
   container_port      = 80
   environment_secrets = {}
+
+  is_ecr_image = var.is_ecr_image
 }
