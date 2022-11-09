@@ -38,6 +38,30 @@ func generateMutableTerraformOptions() *terraform.Options {
 	}
 }
 
+func reachabilityAnalysisAssertions(t *testing.T) {
+	privInstanceENI := terraform.Output(t, generateMutableTerraformOptions(), "test_instance_private_eni")
+	pubInstanceENI := terraform.Output(t, generateMutableTerraformOptions(), "test_instance_public_eni")
+	analysisId := terraform.Output(t, generateMutableTerraformOptions(), "analysis_id")
+	insightsId := terraform.Output(t, generateMutableTerraformOptions(), "insights_id")
+
+	ec2 := terratest_aws.NewEc2Client(t, "us-east-1")
+	networkInsights, networkInsightsErr := ec2.DescribeNetworkInsightsPaths(&legacy_aws_sdk_ec2.DescribeNetworkInsightsPathsInput{
+		NetworkInsightsPathIds: []*string{aws.String(insightsId)},
+	})
+	assert.Nil(t, networkInsightsErr)
+	assert.Equal(t, len(networkInsights.NetworkInsightsPaths), 1)
+	assert.Equal(t, *networkInsights.NetworkInsightsPaths[0].Destination, pubInstanceENI)
+	assert.Equal(t, *networkInsights.NetworkInsightsPaths[0].Source, privInstanceENI)
+
+	networkAnalysis, networkAnalysisErr := ec2.DescribeNetworkInsightsAnalyses(
+		&legacy_aws_sdk_ec2.DescribeNetworkInsightsAnalysesInput{
+			NetworkInsightsAnalysisIds: []*string{aws.String(analysisId)},
+		})
+	assert.Nil(t, networkAnalysisErr)
+	assert.Equal(t, len(networkAnalysis.NetworkInsightsAnalyses), 1)
+	assert.Equal(t, *networkAnalysis.NetworkInsightsAnalyses[0].Status, "succeeded")
+}
+
 func TestVPCUpdate(t *testing.T) {
 	defer terraform.Destroy(t, generateMutableTerraformOptions())
 	terraform.InitAndApply(t, generateMutableTerraformOptions())
@@ -68,6 +92,7 @@ func TestVPCUpdate(t *testing.T) {
 	assert.Nil(t, err)
 	assertCommonValues(t, vpcId, vpcAsset, vpcAws)
 	assert.Equal(t, vpcAws[0].Name, "test-vpc")
+	reachabilityAnalysisAssertions(t)
 
 	mutableTFVariables["vpc_name"] = "test-vpc-updated"
 	terraform.Apply(t, generateMutableTerraformOptions())
@@ -91,6 +116,7 @@ func TestVPCUpdate(t *testing.T) {
 	assert.Nil(t, err)
 	assertCommonValues(t, updatedVpcId, updatedVpcAsset, updatedVpcAws)
 	assert.Equal(t, updatedVpcAws[0].Name, "test-vpc-updated")
+	reachabilityAnalysisAssertions(t)
 
 	mutableTFVariables["vpc_name"] = "test-vpc"
 	terraform.Apply(t, generateMutableTerraformOptions())
