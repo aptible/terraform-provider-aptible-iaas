@@ -49,8 +49,8 @@ locals {
   public_subnet_id_to_use_for_instance  = data.aws_subnets.public_subnets.ids[0]
 }
 
-resource "aws_security_group" "allow_access_to_igw" {
-  name   = "allow_access_to_igw"
+resource "aws_security_group" "open_access" {
+  name   = "open_access"
   vpc_id = data.aws_vpc.test_vpc.id
 
   ingress {
@@ -81,7 +81,7 @@ resource "aws_instance" "test_instance_private" {
 }
 
 resource "aws_network_interface_sg_attachment" "sg_attachment_private" {
-  security_group_id    = aws_security_group.allow_access_to_igw.id
+  security_group_id    = aws_security_group.open_access.id
   network_interface_id = aws_instance.test_instance_private.primary_network_interface_id
 }
 
@@ -97,7 +97,7 @@ resource "aws_instance" "test_instance_public" {
 }
 
 resource "aws_network_interface_sg_attachment" "sg_attachment_public" {
-  security_group_id    = aws_security_group.allow_access_to_igw.id
+  security_group_id    = aws_security_group.open_access.id
   network_interface_id = aws_instance.test_instance_public.primary_network_interface_id
 }
 
