@@ -101,23 +101,27 @@ resource "aws_network_interface_sg_attachment" "sg_attachment_public" {
   network_interface_id = aws_instance.test_instance_public.primary_network_interface_id
 }
 
-resource "aws_ec2_network_insights_path" "reachability_test" {
+resource "aws_ec2_network_insights_path" "insights" {
   source      = aws_instance.test_instance_private.primary_network_interface_id
   destination = aws_instance.test_instance_public.primary_network_interface_id
   protocol    = "tcp"
 }
 
 resource "aws_ec2_network_insights_analysis" "analysis" {
-  network_insights_path_id = aws_ec2_network_insights_path.reachability_test.id
+  network_insights_path_id = aws_ec2_network_insights_path.insights.id
   wait_for_completion      = true
 }
 
-output "test_instance_private_arn" {
-  value = aws_instance.test_instance_private.arn
+output "test_instance_private_eni" {
+  value = aws_instance.test_instance_private.primary_network_interface_id
 }
 
-output "test_instance_public_arn" {
-  value = aws_instance.test_instance_public.arn
+output "test_instance_public_eni" {
+  value = aws_instance.test_instance_public.primary_network_interface_id
+}
+
+output "insights_id" {
+  value = aws_ec2_network_insights_path.insights.id
 }
 
 output "analysis_id" {

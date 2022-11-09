@@ -1,4 +1,4 @@
-package vpc_create
+package vpc_update
 
 import (
 	"context"
