@@ -25,5 +25,5 @@ resource "aptible_aws_secret" "secret" {
   organization_id = data.aptible_organization.org.id
 
   name          = var.secret_name
-  secret_string = var.secret_string
+  secret_string = var.secret_value
 }
