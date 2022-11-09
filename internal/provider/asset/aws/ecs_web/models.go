@@ -52,6 +52,7 @@ type ResourceModel struct {
 	ConnectsTo                 types.List     `tfsdk:"connects_to"`
 	ContainerRegistrySecretArn types.String   `tfsdk:"container_registry_secret_arn"`
 	LoadBalancerUrl            types.String   `tfsdk:"load_balancer_url"`
+	WaitForSteadyState         types.Bool     `tfsdk:"wait_for_steady_state"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -144,6 +145,11 @@ var AssetSchema = map[string]tfsdk.Attribute{
 				Required: true,
 			},
 		}),
+	},
+	"wait_for_steady_state": {
+		Type:     types.BoolType,
+		Optional: true,
+		Computed: true, // if unset, will default to false returned by backend
 	},
 }
 
@@ -266,10 +272,11 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		ContainerImage:             types.String{Value: output.CurrentAssetParameters.Data["container_image"].(string)},
 		ContainerRegistrySecretArn: util.StringVal(output.CurrentAssetParameters.Data["container_registry_secret_arn"]),
 		LoadBalancerUrl:            util.StringVal(outputs["load_balancer_url"].Data),
-		IsEcrImage:                 util.BoolVal(output.CurrentAssetParameters.Data["is_ecr_image"]),
 		ConnectsTo:                 connectsTo,
 		ContainerCommand:           cmd,
 		EnvironmentSecrets:         secrets,
+		IsEcrImage:                 util.BoolVal(output.CurrentAssetParameters.Data["is_ecr_image"]),
+		WaitForSteadyState:         util.BoolVal(output.CurrentAssetParameters.Data["wait_for_steady_state"]),
 	}
 
 	return model, nil
