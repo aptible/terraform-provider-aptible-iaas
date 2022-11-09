@@ -101,7 +101,7 @@ func generateMutableTerraformOptions() *terraform.Options {
 
 func TestECSComputeUpdate(t *testing.T) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, generateMutableTerraformOptions())
-	//defer cleanupAndAssert(t, generateMutableTerraformOptions())
+	defer cleanupAndAssert(t, generateMutableTerraformOptions())
 	terraform.InitAndPlan(t, generateMutableTerraformOptions())
 	terraform.Apply(t, generateMutableTerraformOptions())
 
