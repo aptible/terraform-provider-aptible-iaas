@@ -39,4 +39,6 @@ resource "aptible_aws_ecs_compute" "compute" {
   environment_secrets = {}
 
   is_ecr_image = var.is_ecr_image
+
+  wait_for_steady_state = true
 }

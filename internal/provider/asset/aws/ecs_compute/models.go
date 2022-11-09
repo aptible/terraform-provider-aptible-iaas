@@ -83,11 +83,6 @@ var AssetSchema = map[string]tfsdk.Attribute{
 		Type:     types.StringType,
 		Required: true,
 	},
-	"is_ecr_image": {
-		Type:     types.BoolType,
-		Optional: true,
-		Computed: true, // if unset, will default to false returned by backend
-	},
 	"container_name": {
 		Type:     types.StringType,
 		Required: true,
@@ -124,6 +119,11 @@ var AssetSchema = map[string]tfsdk.Attribute{
 				Required: true,
 			},
 		}),
+	},
+	"is_ecr_image": {
+		Type:     types.BoolType,
+		Optional: true,
+		Computed: true, // if unset, will default to false returned by backend
 	},
 	"wait_for_steady_state": {
 		Type:     types.BoolType,
@@ -162,6 +162,10 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 
 	if !plan.IsEcrImage.IsNull() && !plan.IsEcrImage.IsUnknown() {
 		params["is_ecr_image"] = plan.IsEcrImage.Value
+	}
+
+	if !plan.WaitForSteadyState.IsNull() && !plan.WaitForSteadyState.IsUnknown() {
+		params["wait_for_steady_state"] = plan.WaitForSteadyState.Value
 	}
 
 	// TODO HACK: https://aptible.slack.com/archives/C03C2STPTDX/p1664478414991299
