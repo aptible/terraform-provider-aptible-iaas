@@ -104,4 +104,12 @@ func TestECSComputeCreate(t *testing.T) {
 	assert.NotNil(t, ecsComputeAsset.Outputs)
 	assert.Equal(t, *ecsClusterAws.Status, "ACTIVE")
 	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
+
+	assert.Equal(t, len(ecsServiceAws.Deployments), 1)
+	ecsTaskDefinitionAws := terratest_aws.GetEcsTaskDefinition(t, "us-east-1", *ecsServiceAws.Deployments[0].TaskDefinition)
+	assert.NotNil(t, ecsTaskDefinitionAws)
+	assert.Equal(t, ecsTaskDefinitionAws.Status, "ACTIVE")
+	assert.Equal(t, ecsTaskDefinitionAws.Family, "ecs-compute-test")
+	assert.Equal(t, len(ecsTaskDefinitionAws.ContainerDefinitions), 1)
+	assert.Equal(t, ecsTaskDefinitionAws.ContainerDefinitions[0].Image, "nginx")
 }
