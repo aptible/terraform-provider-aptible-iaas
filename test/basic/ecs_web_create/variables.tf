@@ -14,46 +14,42 @@ variable "aptible_host" {
   type = string
 }
 
+variable "vpc_name" {
+  type = string
+}
+
 variable "domain" {
-  type        = string
-  description = "Parent domain (e.g. 'customer.com' for deploying onto demo-app.customer.com)"
+  type = string
 }
 
 variable "subdomain" {
-  type        = string
-  description = "Subdomain (e.g. 'example' for deploying onto demo-app.customer.com)"
+  type = string
 }
 
 variable "container_image" {
-  type        = string
-  description = "Docker image to deploy"
-  default     = "quay.io/aptible/deploy-demo-app:latest"
+  type = string
 }
 
-variable "container_web_command" {
-  type        = list(string)
-  description = "Array of arguments for the container's web service command"
-  default     = ["gunicorn", "app:app", "-b", "0.0.0.0:5000", "--access-logfile", "-"]
+variable "container_command" {
+  type = list(string)
 }
 
 variable "container_port" {
-  type        = number
-  description = "Port on which container is listening for HTTP"
-  default     = 5000
+  type = number
 }
 
-variable "env_vars" {
-  type      = map(string)
-  sensitive = true
-  default = {
-    PUBLIC_VALUE = "123"
-  }
+variable "ecs_name" {
+  type = string
 }
 
-variable "secrets" {
-  type      = map(string)
-  sensitive = true
-  default = {
-    PASSWORD = "123"
-  }
+variable "container_name" {
+  type = string
+}
+
+variable "is_public" {
+  type = bool
+}
+
+variable "is_ecr_image" {
+  type = bool
 }

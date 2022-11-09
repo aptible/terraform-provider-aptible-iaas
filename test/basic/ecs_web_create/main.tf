@@ -3,9 +3,9 @@ terraform {
     aptible = {
       source = "aptible.com/aptible/aptible-iaas"
     }
-  }
-  aws = {
-    source = "hashicorp/aws"
+    aws = {
+      source = "hashicorp/aws"
+    }
   }
 }
 
@@ -33,7 +33,7 @@ data "aptible_environment" "env" {
 resource "aptible_aws_vpc" "vpc" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
-  name            = "test_vpc"
+  name            = var.vpc_name
 }
 
 resource "aptible_aws_acm" "cert" {
@@ -80,28 +80,20 @@ resource "aptible_aws_acm_waiter" "waiter" {
 }
 
 resource "aptible_aws_ecs_web" "web" {
-  environment_id      = data.aptible_environment.env.id
-  organization_id     = data.aptible_organization.org.id
-  vpc_name            = aptible_aws_vpc.network.name
-  depends_on          = [time_sleep.wait_30_seconds]
+  environment_id  = data.aptible_environment.env.id
+  organization_id = data.aptible_organization.org.id
+  vpc_name        = aptible_aws_vpc.vpc.name
+  depends_on      = [aptible_aws_acm_waiter.waiter]
 
-  asset_version       = "v0.26.1"
-  name                = "nginx"
-  container_name      = "nginx"
-  container_image     = "nginx:1.23"
-  lb_cert_arn         = aptible_aws_acm.cert.arn
-  lb_cert_domain      = aptible_aws_acm.cert.fqdn
+  name            = var.ecs_name
+  container_name  = var.container_name
+  container_image = var.container_image
 
-  is_public           = true
-  container_command   = ["nginx", "-g", "daemon off;"]
-  container_port = 80
-  environment_secrets = {
-    "CONTAINER_VAR1": {
-      "secret_arn": aptible_aws_secret.service_secrets.arn,
-      "secret_json_key": "VARIABLE1"
-    },
-    "CONTAINER_VAR2": {
-      "secret_arn": aptible_aws_secret.special_service_secret.arn
-    },
-  }
+  container_command = var.container_command
+  container_port    = var.container_port
+  is_public         = var.is_public
+  is_ecr_image      = var.is_ecr_image
+  lb_cert_arn       = aptible_aws_acm.cert.arn
+  lb_cert_domain    = aptible_aws_acm.cert.fqdn
+  environment_secrets = {}
 }
