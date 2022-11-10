@@ -82,11 +82,10 @@ func TestSecretUpdate(t *testing.T) {
 	mutableTFVariables["secret_value"] = string(secretEncodedValue)
 	terraform.Apply(t, generateMutableTerraformOptions())
 
-	secretAsset, secretValue, updatedSecretArn, err := getAptibleSecretAndAWSSecret(t, ctx, c, secretId)
+	secretAsset, updatedSecretValue, updatedSecretArn, err := getAptibleSecretAndAWSSecret(t, ctx, c, secretId)
 	assert.Nil(t, err)
 	assert.Equal(t, secretAsset.Id, secretId)
 	assert.Equal(t, secretAsset.Status, cac.ASSETSTATUS_DEPLOYED)
-	updatedSecretValue := terratest_aws.GetSecretValue(t, "us-east-1", updatedSecretArn)
 	assert.Equal(t, updatedSecretValue, string(secretEncodedValue))
 	assert.NotEqual(t, updatedSecretArn, secretArn)
 
@@ -95,7 +94,7 @@ func TestSecretUpdate(t *testing.T) {
 	mutableTFVariables["secret_value"] = "some-kind-of-secret-string"
 	terraform.Apply(t, generateMutableTerraformOptions())
 
-	secretAsset, secretValue, updatedSecretArn, err = getAptibleSecretAndAWSSecret(t, ctx, c, secretId)
+	secretAsset, secretValue, _, err = getAptibleSecretAndAWSSecret(t, ctx, c, secretId)
 	assert.Nil(t, err)
 	assert.Equal(t, secretAsset.Id, secretId)
 	assert.Equal(t, secretAsset.Status, cac.ASSETSTATUS_DEPLOYED)
