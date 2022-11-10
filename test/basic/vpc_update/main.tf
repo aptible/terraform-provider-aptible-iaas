@@ -3,6 +3,9 @@ terraform {
     aptible = {
       source = "aptible.com/aptible/aptible-iaas"
     }
+    aws = {
+      source = "hashicorp/aws"
+    }
   }
 }
 
@@ -24,4 +27,3 @@ resource "aptible_aws_vpc" "network" {
   organization_id = data.aptible_organization.org.id
   name            = var.vpc_name
 }
-
