@@ -11,16 +11,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache/types"
 
-	//"github.com/aws/aws-sdk-go/aws/awserr"
-	//"github.com/aws/aws-sdk-go/aws/session"
+	cac "github.com/aptible/cloud-api-clients/clients/go"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 	legacy_aws_sdk_ec2 "github.com/aws/aws-sdk-go/service/ec2"
-
 	terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-
-	cac "github.com/aptible/cloud-api-clients/clients/go"
-	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 )
 
 func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
@@ -125,35 +121,3 @@ func GetCluster(cluster_id string) (*types.CacheCluster, error) {
 
 	return &clusters.CacheClusters[0], nil
 }
-
-// func GetCluster(cluster_id string) (elasticache.CacheCluster, error) {
-
-// 	svc := elasticache.New(session.New())
-// 	input := &elasticache.DescribeCacheClustersInput{
-// 		CacheClusterId: aws.String(cluster_id),
-// 	}
-
-// 	result, err := svc.DescribeCacheClusters(input)
-// 	if err != nil {
-// 		if aerr, ok := err.(awserr.Error); ok {
-// 			switch aerr.Code() {
-// 			case elasticache.ErrCodeCacheClusterNotFoundFault:
-// 				return elasticache.CacheCluster{}, fmt.Errorf("%s - %s", elasticache.ErrCodeCacheClusterNotFoundFault, aerr.Error())
-// 			case elasticache.ErrCodeInvalidParameterValueException:
-// 				return elasticache.CacheCluster{}, fmt.Errorf("%s - %s", elasticache.ErrCodeInvalidParameterValueException, aerr.Error())
-// 			case elasticache.ErrCodeInvalidParameterCombinationException:
-// 				return elasticache.CacheCluster{}, fmt.Errorf("%s - %s", elasticache.ErrCodeInvalidParameterCombinationException, aerr.Error())
-// 			default:
-// 				return elasticache.CacheCluster{}, fmt.Errorf(aerr.Error())
-// 			}
-// 		} else {
-// 			// Print the error, cast err to awserr.Error to get the Code and
-// 			// Message from an error.
-// 			fmt.Println(err.Error())
-// 		}
-// 		return elasticache.CacheCluster{}, err
-// 	}
-
-// 	fmt.Println(result)
-// 	return *result.CacheClusters[0], nil
-// }
