@@ -20,10 +20,14 @@ import (
 )
 
 func checkSetup() {
-	_, dnsAccountSet := os.LookupEnv("DNS_AWS_ACCOUNT_ID")
-	if !dnsAccountSet {
-		fmt.Printf("DNS_AWS_ACCOUNT_ID environment variable not set\n")
-		os.Exit(1)
+	for _, envVarKey := range []string{
+		"DNS_AWS_ACCOUNT_ID",
+	} {
+		_, envVar := os.LookupEnv(envVarKey)
+		if !envVar {
+			fmt.Printf("%s environment variable not set\n", envVarKey)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -82,8 +86,27 @@ func insecureHttpClient() *http.Client {
 	return client
 }
 
-func TestECSComputeCreate(t *testing.T) {
+func init() {
 	checkSetup()
+}
+
+func assertCommonVpc(t *testing.T, vpcId string, vpcAsset *cac.AssetOutput, vpcAws []*terratest_aws.Vpc) {
+	assert.Equal(t, vpcAsset.Id, vpcId)
+	assert.Equal(t, vpcAsset.Status, cac.ASSETSTATUS_DEPLOYED)
+	assert.GreaterOrEqual(t, len(vpcAws), 1)
+	assert.Equal(t, len(vpcAws[0].Subnets), 6)
+	assert.Equal(t, vpcAws[0].Tags["aptible_asset_id"], vpcId)
+}
+
+func assertCommonEcs(t *testing.T, ecsWebId string, ecsWebAsset *cac.AssetOutput, ecsClusterAws *ecs.Cluster, ecsServiceAws *ecs.Service) {
+	assert.Equal(t, ecsWebAsset.Id, ecsWebId)
+	assert.Equal(t, ecsWebAsset.Status, cac.ASSETSTATUS_DEPLOYED)
+	assert.NotNil(t, ecsWebAsset.Outputs)
+	assert.Equal(t, *ecsClusterAws.Status, "ACTIVE")
+	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
+}
+
+func TestECSWebCreatePublicImage(t *testing.T) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: ".",
 
@@ -92,16 +115,16 @@ func TestECSComputeCreate(t *testing.T) {
 			"environment_id":    os.Getenv("ENVIRONMENT_ID"),
 			"aptible_host":      os.Getenv("APTIBLE_HOST"),
 			"dns_account_id":    os.Getenv("DNS_AWS_ACCOUNT_ID"),
-			"ecs_name":          "ecs-web-test",
+			"ecs_name":          "ecs-pub-web-test",
 			"container_command": []string{"nginx", "-g", "daemon off;"},
 			"container_image":   "nginx",
 			"container_port":    80,
 			"container_name":    "nginx",
 			"is_public":         true,
 			"is_ecr_image":      false,
-			"vpc_name":          "testecs-web-vpc",
+			"vpc_name":          "testecs-pub-img-web-vpc",
 			"domain":            "aptible-cloud-staging.com",
-			"subdomain":         "test-ecs-integration",
+			"subdomain":         "test-ecs-pub-integration",
 		},
 	})
 	defer cleanupAndAssert(t, terraformOptions)
@@ -119,26 +142,22 @@ func TestECSComputeCreate(t *testing.T) {
 	os.Setenv(terratest_aws.AuthAssumeRoleEnvVar, aptibleAccountRole)
 
 	vpcId := terraform.Output(t, terraformOptions, "vpc_id")
-	vpcAsset, vpcAws, err := getAptibleAndAWSVPCs(t, ctx, c, vpcId, "testecs-web-vpc")
-	assert.Nil(t, err)
-	assert.Equal(t, vpcAsset.Id, vpcId)
-	assert.Equal(t, vpcAsset.Status, cac.ASSETSTATUS_DEPLOYED)
-	assert.GreaterOrEqual(t, len(vpcAws), 1)
-	assert.Equal(t, len(vpcAws[0].Subnets), 6)
+	vpcAsset, vpcAws, vpcErr := getAptibleAndAWSVPCs(t, ctx, c, vpcId, "testecs-pub-img-web-vpc")
+	if assert.NoError(t, vpcErr) {
+		assertCommonVpc(t, vpcId, vpcAsset, vpcAws)
+	}
 
 	ecsWebId := terraform.Output(t, terraformOptions, "ecs_web_id")
-	ecsWebAsset, ecsClusterAws, ecsServiceAws, err := getAptibleAndAWSECSServiceAndCluster(t, ctx, c, ecsWebId, "ecs-web-test-web-cluster", "ecs-web-test")
-	assert.Nil(t, err)
-	assert.Equal(t, ecsWebAsset.Id, ecsWebId)
-	assert.Equal(t, ecsWebAsset.Status, cac.ASSETSTATUS_DEPLOYED)
-	assert.NotNil(t, ecsWebAsset.Outputs)
-	assert.Equal(t, *ecsClusterAws.Status, "ACTIVE")
-	assert.Equal(t, *ecsServiceAws.Status, "ACTIVE")
+	ecsWebAsset, ecsClusterAws, ecsServiceAws, ecsErr := getAptibleAndAWSECSServiceAndCluster(t, ctx, c, ecsWebId, "ecs-pub-web-test-web-cluster", "ecs-pub-web-test")
+	if assert.NoError(t, ecsErr) {
+		assertCommonEcs(t, ecsWebId, ecsWebAsset, ecsClusterAws, ecsServiceAws)
+	}
 
 	ecsLoadBalancerUrl := terraform.Output(t, terraformOptions, "loadbalancer_url")
 	ecsLbGet, ecsLbGetErr := insecureHttpClient().Get(fmt.Sprintf("https://%s", ecsLoadBalancerUrl))
-	assert.Nil(t, ecsLbGetErr)
-	assert.EqualValues(t, ecsLbGet.StatusCode, 200)
+	if assert.NoError(t, ecsLbGetErr) {
+		assert.EqualValues(t, ecsLbGet.StatusCode, 200)
+	}
 
 	ecsServiceUrl := terraform.Output(t, terraformOptions, "web_url")
 	ecsUrlGet, ecsUrlGetErr := http.Get(fmt.Sprintf("https://%s", ecsServiceUrl))
