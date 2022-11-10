@@ -22,22 +22,6 @@ var mutableTFVariables = map[string]interface{}{
 	"secret_value":    "some-kind-of-secret-string",
 }
 
-func getAptibleSecretAndAWSSecret(t *testing.T, ctx context.Context, client client.CloudClient, secretId string) (*cac.AssetOutput, string, string, error) {
-	secretAsset, err := client.DescribeAsset(
-		ctx,
-		os.Getenv("ORGANIZATION_ID"),
-		os.Getenv("ENVIRONMENT_ID"),
-		secretId,
-	)
-	if err != nil {
-		return nil, "", "", err
-	}
-	tfOptions := generateMutableTerraformOptions()
-	secretArn := terraform.Output(t, tfOptions, "secret_arn")
-	secretValue := terratest_aws.GetSecretValue(t, "us-east-1", secretArn)
-	return secretAsset, secretValue, secretArn, err
-}
-
 func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
 	terraform.Destroy(t, terraformOptions)
 	// test / assert all failures here
@@ -66,14 +50,23 @@ func TestSecretUpdate(t *testing.T) {
 
 	secretId := terraform.Output(t, tfOptions, "secret_id")
 
-	// create string secret
-	secretAsset, secretValue, secretArn, err := getAptibleSecretAndAWSSecret(t, ctx, c, secretId)
+	// check cloud api's understanding of asset
+	secretAsset, err := c.DescribeAsset(
+		ctx,
+		os.Getenv("ORGANIZATION_ID"),
+		os.Getenv("ENVIRONMENT_ID"),
+		secretId,
+	)
 	assert.Nil(t, err)
 	assert.Equal(t, secretAsset.Id, secretId)
 	assert.Equal(t, secretAsset.Status, cac.ASSETSTATUS_DEPLOYED)
+
+	secretArn := terraform.Output(t, tfOptions, "secret_arn")
+
+	// check aws asset state
+	secretValue := terratest_aws.GetSecretValue(t, "us-east-1", secretArn)
 	assert.Equal(t, secretValue, "some-kind-of-secret-string")
 
-	// change secret insertion to json
 	secretEncodedValue, _ := json.Marshal(map[string]string{
 		"test-value-1": "test1",
 		"test-value-2": "test2",
@@ -82,22 +75,24 @@ func TestSecretUpdate(t *testing.T) {
 	mutableTFVariables["secret_value"] = string(secretEncodedValue)
 	terraform.Apply(t, generateMutableTerraformOptions())
 
-	secretAsset, secretValue, updatedSecretArn, err := getAptibleSecretAndAWSSecret(t, ctx, c, secretId)
+	// check cloud api's understanding of asset
+	updatedSecretAsset, err := c.DescribeAsset(
+		ctx,
+		os.Getenv("ORGANIZATION_ID"),
+		os.Getenv("ENVIRONMENT_ID"),
+		secretId,
+	)
 	assert.Nil(t, err)
-	assert.Equal(t, secretAsset.Id, secretId)
-	assert.Equal(t, secretAsset.Status, cac.ASSETSTATUS_DEPLOYED)
+	assert.Equal(t, updatedSecretAsset.Id, secretId)
+	assert.Equal(t, updatedSecretAsset.Status, cac.ASSETSTATUS_DEPLOYED)
+
+	updatedSecretArn := terraform.Output(t, tfOptions, "secret_arn")
+	// check aws asset state
 	updatedSecretValue := terratest_aws.GetSecretValue(t, "us-east-1", updatedSecretArn)
 	assert.Equal(t, updatedSecretValue, string(secretEncodedValue))
 	assert.NotEqual(t, updatedSecretArn, secretArn)
 
-	// check it reverted to original setup
 	mutableTFVariables["secret_name"] = "testing-secret"
 	mutableTFVariables["secret_value"] = "some-kind-of-secret-string"
 	terraform.Apply(t, generateMutableTerraformOptions())
-
-	secretAsset, secretValue, updatedSecretArn, err = getAptibleSecretAndAWSSecret(t, ctx, c, secretId)
-	assert.Nil(t, err)
-	assert.Equal(t, secretAsset.Id, secretId)
-	assert.Equal(t, secretAsset.Status, cac.ASSETSTATUS_DEPLOYED)
-	assert.Equal(t, secretValue, "some-kind-of-secret-string")
 }
