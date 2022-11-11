@@ -10,10 +10,6 @@ variable "aptible_host" {
   type = string
 }
 
-variable "database_name" {
-  type = string
-}
-
 variable "vpc_name" {
   type = string
 }

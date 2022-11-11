@@ -1,5 +1,5 @@
 output "vpc_id" {
-  value = aptible_aws_vpc.network.id
+  value = data.aptible_aws_vpc.network.id
 }
 
 output "rds_id" {

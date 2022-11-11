@@ -1,4 +1,4 @@
-module "db" {
+module "database" {
   source = "../"
 
 
@@ -9,4 +9,16 @@ module "db" {
   environment_id          = var.environment_id
   organization_id         = var.organization_id
   vpc_name                = var.vpc_name
+}
+
+output "vpc_id" {
+  value = module.database.vpc_id
+}
+
+output "rds_db_identifier" {
+  value = module.database.rds_db_identifier
+}
+
+output "rds_id" {
+  value = module.database.rds_id
 }
