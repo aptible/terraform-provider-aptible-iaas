@@ -1,4 +1,4 @@
-package aurora
+package mariadb
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 
 func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
 	terraform.Destroy(t, terraformOptions)
-	err := vpc.DeleteVPCIfUnused(t, "testing-aurora-57")
+	err := vpc.DeleteVPCIfUnused(t, "testing-mariadb-57")
 	assert.Nil(t, err)
 
 	// test / assert all failures here
@@ -30,14 +30,14 @@ func TestRDSCreateMySQL(t *testing.T) {
 			"organization_id":         os.Getenv("ORGANIZATION_ID"),
 			"environment_id":          os.Getenv("ENVIRONMENT_ID"),
 			"aptible_host":            os.Getenv("APTIBLE_HOST"),
-			"database_name":           "test-create-aurora-57",
+			"database_name":           "test-create-mariadb-57",
 			"database_engine_version": "5.7",
 			"vpc_name":                "rds-create-vpc",
 		},
 	})
 	defer cleanupAndAssert(t, terraformOptions)
 
-	err := vpc.AcquireVPCOrCreate(t, "testing-aurora-57")
+	err := vpc.AcquireVPCOrCreate(t, "testing-mariadb-57")
 	if !assert.Nil(t, err) {
 		t.Fatal(err)
 	}

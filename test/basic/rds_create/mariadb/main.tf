@@ -3,7 +3,7 @@ module "database" {
 
 
   aptible_host            = var.aptible_host
-  database_engine         = "aurora"
+  database_engine         = "mariadb"
   database_engine_version = var.database_engine_version
   database_name           = var.database_name
   environment_id          = var.environment_id
