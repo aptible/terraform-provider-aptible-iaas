@@ -121,7 +121,7 @@ func CheckOrRequestVPCLimit() error {
 
 	log.Println(fmt.Sprintf("Successfully retrieved quota from servicequotas for VPC: %v", *vpcQuotaOutput.Quota.Value))
 
-	if *vpcQuotaOutput.Quota.Value != VPCCountRequested {
+	if *vpcQuotaOutput.Quota.Value < VPCCountRequested {
 		log.Println(fmt.Sprintf("VPC Quota output does not match requested value, requesting changes from "+
 			"%v to %v", *vpcQuotaOutput.Quota.Value, VPCCountRequested))
 
@@ -129,10 +129,9 @@ func CheckOrRequestVPCLimit() error {
 		if quotaRequestErr := requestStatusIncreaseIfApplicable(ctx, c, VPCQuotaCode, "vpc", valueToUse); quotaRequestErr != nil {
 			return quotaRequestErr
 		}
-	}
-
-	if quotaAchievedErr := waitForQuotaValueToBeActive(ctx, c, VPCQuotaCode, "vpc", VPCCountRequested); quotaAchievedErr != nil {
-		return quotaAchievedErr
+		if quotaAchievedErr := waitForQuotaValueToBeActive(ctx, c, VPCQuotaCode, "vpc", VPCCountRequested); quotaAchievedErr != nil {
+			return quotaAchievedErr
+		}
 	}
 
 	igwQuotaOutput, err := c.GetServiceQuota(ctx, &servicequotas.GetServiceQuotaInput{
@@ -145,7 +144,7 @@ func CheckOrRequestVPCLimit() error {
 
 	log.Println(fmt.Sprintf("Successfully retrieved quota from servicequotas for IGW: %v", *igwQuotaOutput.Quota.Value))
 
-	if *igwQuotaOutput.Quota.Value != VPCCountRequested {
+	if *igwQuotaOutput.Quota.Value < VPCCountRequested {
 		log.Println(fmt.Sprintf("Internet Gateway Quota output does not match requested value, requesting changes from "+
 			"%v to %v", *vpcQuotaOutput.Quota.Value, VPCCountRequested))
 
@@ -153,10 +152,9 @@ func CheckOrRequestVPCLimit() error {
 		if quotaRequestErr := requestStatusIncreaseIfApplicable(ctx, c, IGWQuotaCode, "vpc", valueToUse); quotaRequestErr != nil {
 			return quotaRequestErr
 		}
-	}
-
-	if quotaAchievedErr := waitForQuotaValueToBeActive(ctx, c, IGWQuotaCode, "vpc", VPCCountRequested); quotaAchievedErr != nil {
-		return quotaAchievedErr
+		if quotaAchievedErr := waitForQuotaValueToBeActive(ctx, c, IGWQuotaCode, "vpc", VPCCountRequested); quotaAchievedErr != nil {
+			return quotaAchievedErr
+		}
 	}
 
 	log.Println("Checked and/or updated all service quotas value. Proceeding to test.")

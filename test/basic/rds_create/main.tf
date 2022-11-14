@@ -29,7 +29,7 @@ resource "aptible_aws_rds" "database" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
 
-  vpc_name       = data.aptible_aws_vpc.network.name
+  vpc_name       = aptible_aws_vpc.network.name
   name           = var.database_name
   engine         = var.database_engine
   engine_version = var.database_engine_version
