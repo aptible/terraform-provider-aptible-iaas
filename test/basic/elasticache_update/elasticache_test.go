@@ -37,7 +37,7 @@ func TestElasticacheUpdate(t *testing.T) {
 			"node_name":          "test-elasticache-node",
 			"vpc_name":           vpc_name,
 			"description":        "TestingModule",
-			"snapshot_window":    "01:00-04:00",
+			"snapshot_window":    "00:00-03:00",
 			"maintenance_window": "sun:05:00-sun:09:00",
 		},
 	})
@@ -101,7 +101,32 @@ func TestElasticacheUpdate(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, *cluster_details.CacheClusterStatus, "available")
 
-	terraformUpdateOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+	terraformUpdateSnapshotWindowOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+		TerraformDir: ".",
+
+		Vars: map[string]interface{}{
+			"organization_id":    os.Getenv("ORGANIZATION_ID"),
+			"environment_id":     os.Getenv("ENVIRONMENT_ID"),
+			"aptible_host":       os.Getenv("APTIBLE_HOST"),
+			"node_name":          "test-elasticache-node",
+			"vpc_name":           vpc_name,
+			"description":        "TestingModule",
+			"snapshot_window":    "01:00-04:00",
+			"maintenance_window": "sun:05:00-sun:09:00",
+		},
+	})
+
+	// Run the Terraform Workspace.
+	terraform.InitAndApply(t, terraformUpdateSnapshotWindowOptions)
+
+	cluster_update_snapshot_details, err := GetCluster(redis_cluster_id_base + "-001")
+	assert.Nil(t, err)
+	assert.Equal(t, *cluster_update_snapshot_details.CacheClusterStatus, "available")
+
+	assert.Equal(t, *cluster_update_snapshot_details.SnapshotWindow, "01:00-04:00")
+	assert.Equal(t, *cluster_update_snapshot_details.PreferredMaintenanceWindow, "sun:05:00-sun:09:00")
+
+	terraformUpdateMaintenanceWindowOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: ".",
 
 		Vars: map[string]interface{}{
@@ -112,19 +137,20 @@ func TestElasticacheUpdate(t *testing.T) {
 			"vpc_name":           vpc_name,
 			"description":        "TestingModule",
 			"snapshot_window":    "02:00-05:00",
-			"maintenance_window": "sun:06:00-sun:10:00",
+			"maintenance_window": "sun:08:00-sun:12:00",
 		},
 	})
 
 	// Run the Terraform Workspace.
-	terraform.InitAndApply(t, terraformUpdateOptions)
+	terraform.InitAndApply(t, terraformUpdateMaintenanceWindowOptions)
 
-	cluster_update_details, err := GetCluster(redis_cluster_id_base + "-001")
+	cluster_update_maintenance_details, err := GetCluster(redis_cluster_id_base + "-001")
 	assert.Nil(t, err)
-	assert.Equal(t, *cluster_update_details.CacheClusterStatus, "available")
+	assert.Equal(t, *cluster_update_maintenance_details.CacheClusterStatus, "available")
 
-	assert.Equal(t, *cluster_update_details.PreferredMaintenanceWindow, "sun:06:00-sun:10:00")
-	assert.Equal(t, *cluster_update_details.SnapshotWindow, "02:00-05:00")
+	assert.Equal(t, *cluster_update_maintenance_details.SnapshotWindow, "02:00-05:00")
+	assert.Equal(t, *cluster_update_maintenance_details.PreferredMaintenanceWindow, "sun:08:00-sun:12:00")
+
 }
 
 func GetCluster(cluster_id string) (*types.CacheCluster, error) {
