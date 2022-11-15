@@ -1,4 +1,4 @@
-package aurora
+package mysql
 
 import (
 	"context"
