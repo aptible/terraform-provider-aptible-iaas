@@ -145,8 +145,8 @@ func CheckOrRequestVPCLimit() error {
 	log.Printf("Successfully retrieved quota from servicequotas for IGW: %v", *igwQuotaOutput.Quota.Value)
 
 	if *igwQuotaOutput.Quota.Value < VPCCountRequested {
-		log.Printf(fmt.Sprintf("Internet Gateway Quota output does not match requested value, requesting changes from "+
-			"%v to %v", *vpcQuotaOutput.Quota.Value, VPCCountRequested))
+		log.Printf("Internet Gateway Quota output does not match requested value, requesting changes from "+
+			"%v to %v", *vpcQuotaOutput.Quota.Value, VPCCountRequested)
 
 		valueToUse := float64(VPCCountRequested)
 		if quotaRequestErr := requestStatusIncreaseIfApplicable(ctx, c, IGWQuotaCode, "vpc", valueToUse); quotaRequestErr != nil {
