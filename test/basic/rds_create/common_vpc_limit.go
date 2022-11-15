@@ -51,8 +51,8 @@ func waitForQuotaValueToBeActive(ctx context.Context, c *servicequotas.Client, q
 			return nil
 		}
 
-		log.Println(fmt.Sprintf("Still waiting for %s: %s with value of %v. "+
-			"Will wait till %s. Sleeping 30s", quotaCode, serviceCode, expectedValue, timeToError.String()))
+		log.Printf("Still waiting for %s: %s with value of %v. "+
+			"Will wait till %s. Sleeping 30s", quotaCode, serviceCode, expectedValue, timeToError.String())
 		time.Sleep(30 * time.Second)
 	}
 }
@@ -95,7 +95,7 @@ func requestStatusIncreaseIfApplicable(ctx context.Context, c *servicequotas.Cli
 		return fmt.Errorf("service quota change denied with status: %s", requestStatus)
 	}
 
-	log.Println(fmt.Sprintf("Found request for status, no error needed right now. %s", requestStatus))
+	log.Printf("Found request for status, no error needed right now. %s", requestStatus)
 
 	return nil
 }
@@ -119,11 +119,11 @@ func CheckOrRequestVPCLimit() error {
 		return err
 	}
 
-	log.Println(fmt.Sprintf("Successfully retrieved quota from servicequotas for VPC: %v", *vpcQuotaOutput.Quota.Value))
+	log.Printf("Successfully retrieved quota from servicequotas for VPC: %v", *vpcQuotaOutput.Quota.Value)
 
 	if *vpcQuotaOutput.Quota.Value < VPCCountRequested {
-		log.Println(fmt.Sprintf("VPC Quota output does not match requested value, requesting changes from "+
-			"%v to %v", *vpcQuotaOutput.Quota.Value, VPCCountRequested))
+		log.Printf("VPC Quota output does not match requested value, requesting changes from "+
+			"%v to %v", *vpcQuotaOutput.Quota.Value, VPCCountRequested)
 
 		valueToUse := float64(VPCCountRequested)
 		if quotaRequestErr := requestStatusIncreaseIfApplicable(ctx, c, VPCQuotaCode, "vpc", valueToUse); quotaRequestErr != nil {
@@ -142,10 +142,10 @@ func CheckOrRequestVPCLimit() error {
 		return err
 	}
 
-	log.Println(fmt.Sprintf("Successfully retrieved quota from servicequotas for IGW: %v", *igwQuotaOutput.Quota.Value))
+	log.Printf("Successfully retrieved quota from servicequotas for IGW: %v", *igwQuotaOutput.Quota.Value)
 
 	if *igwQuotaOutput.Quota.Value < VPCCountRequested {
-		log.Println(fmt.Sprintf("Internet Gateway Quota output does not match requested value, requesting changes from "+
+		log.Printf(fmt.Sprintf("Internet Gateway Quota output does not match requested value, requesting changes from "+
 			"%v to %v", *vpcQuotaOutput.Quota.Value, VPCCountRequested))
 
 		valueToUse := float64(VPCCountRequested)
