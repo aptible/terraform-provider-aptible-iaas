@@ -2,6 +2,8 @@ package mysql
 
 import (
 	"context"
+	"encoding/json"
+	"log"
 	"os"
 	"testing"
 
@@ -13,6 +15,14 @@ import (
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 	"github.com/aptible/terraform-provider-aptible-iaas/test/basic/rds_create"
 )
+
+func init() {
+	if err := rds_create.CheckOrRequestVPCLimit(); err != nil {
+		// kill execution of test suite if this just dies
+		log.Println(err)
+		os.Exit(1)
+	}
+}
 
 func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
 	terraform.Destroy(t, terraformOptions)
@@ -35,11 +45,6 @@ func TestRDSCreateMySQL(t *testing.T) {
 	})
 	defer cleanupAndAssert(t, terraformOptions)
 
-	err := rds_create.CheckOrRequestVPCLimit()
-	if assert.Nil(t, err) {
-		t.Fail()
-	}
-
 	terraform.InitAndApply(t, terraformOptions)
 
 	c := client.NewClient(
@@ -51,7 +56,7 @@ func TestRDSCreateMySQL(t *testing.T) {
 
 	rdsId := terraform.Output(t, terraformOptions, "rds_id")
 	rdsInstanceId := terraform.Output(t, terraformOptions, "rds_db_identifier")
-	// check cloud api's understanding of asset
+	// check cloud api's under	standing of asset
 	rdsAsset, rdsErr := c.DescribeAsset(
 		ctx,
 		os.Getenv("ORGANIZATION_ID"),
@@ -68,4 +73,21 @@ func TestRDSCreateMySQL(t *testing.T) {
 	rdsAws, rdsAwsErr := terratest_aws.GetRdsInstanceDetailsE(t, rdsInstanceId, "us-east-1")
 	assert.Nil(t, rdsAwsErr)
 	assert.Equal(t, *rdsAws.DBInstanceStatus, "available")
+	assert.True(t, *rdsAws.StorageEncrypted)
+	assert.Equal(t, *rdsAws.Engine, "mysql")
+	assert.Contains(t, *rdsAws.EngineVersion, "5.7")
+	assert.Contains(t, *rdsAws.DBName, "main")
+	assert.False(t, *rdsAws.PubliclyAccessible)
+	assert.Len(t, rdsAws.DBParameterGroups, 1)
+	assert.Equal(t, *rdsAws.DBParameterGroups[0].ParameterApplyStatus, "in-sync")
+
+	rdsOutputs := *rdsAsset.Outputs
+	secretRawValue := terratest_aws.GetSecretValue(t, "us-east-1", rdsOutputs["rds_password_secret_arn"].Data.(string))
+	var secretValue map[string]string
+	unmarshalErr := json.Unmarshal([]byte(secretRawValue), &secretValue)
+	assert.Nil(t, unmarshalErr)
+	assert.NotEmpty(t, secretValue)
+	assert.Contains(t, secretValue["endpoint"], "rds.amazonaws.com")
+	assert.Equal(t, secretValue["database"], "main")
+	assert.NotEmpty(t, secretValue["password"])
 }

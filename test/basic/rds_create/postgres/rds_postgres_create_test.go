@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
+	"log"
 	"os"
 	"testing"
 
@@ -20,6 +22,14 @@ func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
 	// test / assert all failures here
 }
 
+func init() {
+	if err := rds_create.CheckOrRequestVPCLimit(); err != nil {
+		// kill execution of test suite if this just dies
+		log.Println(err)
+		os.Exit(1)
+	}
+}
+
 func TestRDSCreatePostgres(t *testing.T) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: ".",
@@ -34,11 +44,6 @@ func TestRDSCreatePostgres(t *testing.T) {
 		},
 	})
 	defer cleanupAndAssert(t, terraformOptions)
-
-	err := rds_create.CheckOrRequestVPCLimit()
-	if assert.Nil(t, err) {
-		t.Fail()
-	}
 	terraform.InitAndApply(t, terraformOptions)
 
 	c := client.NewClient(
@@ -67,4 +72,21 @@ func TestRDSCreatePostgres(t *testing.T) {
 	rdsAws, rdsAwsErr := terratest_aws.GetRdsInstanceDetailsE(t, rdsInstanceId, "us-east-1")
 	assert.Nil(t, rdsAwsErr)
 	assert.Equal(t, *rdsAws.DBInstanceStatus, "available")
+	assert.True(t, *rdsAws.StorageEncrypted)
+	assert.Equal(t, *rdsAws.Engine, "postgres")
+	assert.Contains(t, *rdsAws.EngineVersion, "14")
+	assert.Contains(t, *rdsAws.DBName, "main")
+	assert.False(t, *rdsAws.PubliclyAccessible)
+	assert.Len(t, rdsAws.DBParameterGroups, 1)
+	assert.Equal(t, *rdsAws.DBParameterGroups[0].ParameterApplyStatus, "in-sync")
+
+	rdsOutputs := *rdsAsset.Outputs
+	secretRawValue := terratest_aws.GetSecretValue(t, "us-east-1", rdsOutputs["rds_password_secret_arn"].Data.(string))
+	var secretValue map[string]string
+	unmarshalErr := json.Unmarshal([]byte(secretRawValue), &secretValue)
+	assert.Nil(t, unmarshalErr)
+	assert.NotEmpty(t, secretValue)
+	assert.Contains(t, secretValue["endpoint"], "rds.amazonaws.com")
+	assert.Equal(t, secretValue["database"], "main")
+	assert.NotEmpty(t, secretValue["password"])
 }
