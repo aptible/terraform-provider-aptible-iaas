@@ -17,6 +17,7 @@ import (
 
 const maxPages = 10
 
+// GetTaggedResources returns active resources with the environment and asset tags
 func GetTaggedResources(ctx context.Context, environmentId, assetId string) ([]string, error) {
 
 	cfg, err := config.LoadDefaultConfig(ctx)
@@ -66,6 +67,7 @@ func GetTaggedResources(ctx context.Context, environmentId, assetId string) ([]s
 	return arnSlice, nil
 }
 
+// Verifies that a resource is actually active. This has edge cases for different resource types.
 func verifyResourcesIsActive(ctx context.Context, resourceARN string) (bool, error) {
 
 	switch {
