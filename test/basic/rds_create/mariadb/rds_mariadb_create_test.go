@@ -81,8 +81,7 @@ func TestRDSCreateMariaDB(t *testing.T) {
 	assert.Len(t, rdsAws.DBParameterGroups, 1)
 	assert.Equal(t, *rdsAws.DBParameterGroups[0].ParameterApplyStatus, "in-sync")
 
-	rdsOutputs := *rdsAsset.Outputs
-	secretRawValue := terratest_aws.GetSecretValue(t, "us-east-1", rdsOutputs["rds_password_secret_arn"].Data.(string))
+	secretRawValue := terratest_aws.GetSecretValue(t, "us-east-1", rdsAsset.GetOutputs()["rds_password_secret_arn"].Data.(string))
 	var secretValue map[string]string
 	unmarshalErr := json.Unmarshal([]byte(secretRawValue), &secretValue)
 	assert.Nil(t, unmarshalErr)
