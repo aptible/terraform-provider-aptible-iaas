@@ -17,10 +17,10 @@ import (
 	"github.com/aptible/terraform-provider-aptible-iaas/test/utils"
 )
 
-func cleanupAndAssert(c context.Context, t *testing.T, terraformOptions *terraform.Options, environmentId, assetId string) {
+func cleanupAndAssert(ctx context.Context, t *testing.T, terraformOptions *terraform.Options, environmentId, assetId string) {
 	terraform.Destroy(t, terraformOptions)
 
-	resources, err := utils.GetTaggedResources(c, environmentId, assetId)
+	resources, err := utils.GetTaggedResources(ctx, environmentId, assetId)
 	fmt.Printf("Resource response is %v", resources)
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(resources))
@@ -101,4 +101,8 @@ func TestVPCCreate(t *testing.T) {
 	assert.Nil(t, networkAnalysisErr)
 	assert.Equal(t, len(networkAnalysis.NetworkInsightsAnalyses), 1)
 	assert.Equal(t, *networkAnalysis.NetworkInsightsAnalyses[0].Status, "succeeded")
+
+	tagged_resources, err := utils.GetTaggedResources(ctx, os.Getenv("ENVIRONMENT_ID"), vpcAsset.Id)
+	assert.Nil(t, err)
+	assert.Greater(t, len(tagged_resources), 0)
 }
