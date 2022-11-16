@@ -3,6 +3,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -58,6 +59,10 @@ func GetTaggedResources(ctx context.Context, environmentId, assetId string) ([]s
 		if response.PaginationToken == nil {
 			// No more pages so we break.
 			break
+		}
+
+		if i+1 == maxPages {
+			fmt.Println("Hit Max Pages when attempting to load all of the resources. Returning a truncated list.")
 		}
 
 		// Assign the PaginationToken pointer to page_token for the next loop
