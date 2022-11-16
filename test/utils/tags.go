@@ -1,11 +1,14 @@
+//package main
 package utils
 
 import (
 	"context"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi"
 	tagging_types "github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi/types"
@@ -14,7 +17,6 @@ import (
 
 const maxPages = 10
 
-// GetTaggedResources -
 func GetTaggedResources(ctx context.Context, environmentId, assetId string) ([]string, error) {
 
 	cfg, err := config.LoadDefaultConfig(ctx)
@@ -40,15 +42,15 @@ func GetTaggedResources(ctx context.Context, environmentId, assetId string) ([]s
 		}
 
 		for _, resource := range response.ResourceTagMappingList {
-			resource_arn := *resource.ResourceARN
-			isActive, err := verifyResourcesIsActive(ctx, resource_arn)
+			resourceARN := *resource.ResourceARN
+			isActive, err := verifyResourcesIsActive(ctx, resourceARN)
 
 			if err != nil {
 				return nil, err
 			}
 
 			if isActive {
-				arnSlice = append(arnSlice, resource_arn)
+				arnSlice = append(arnSlice, resourceARN)
 			}
 		}
 
@@ -64,39 +66,69 @@ func GetTaggedResources(ctx context.Context, environmentId, assetId string) ([]s
 	return arnSlice, nil
 }
 
-func verifyResourcesIsActive(ctx context.Context, resource_arn string) (bool, error) {
+func verifyResourcesIsActive(ctx context.Context, resourceARN string) (bool, error) {
 
 	switch {
-	case strings.Contains(resource_arn, "arn:aws:kms"):
+	case strings.Contains(resourceARN, "arn:aws:kms"):
 		cfg, err := config.LoadDefaultConfig(ctx)
 		if err != nil {
 			return false, err
 		}
 
 		c := kms.NewFromConfig(cfg)
-		key, err := c.DescribeKey(ctx, &kms.DescribeKeyInput{KeyId: &resource_arn})
+		key, err := c.DescribeKey(ctx, &kms.DescribeKeyInput{KeyId: &resourceARN})
 
 		if err != nil {
 			return false, err
 		}
-		// If the deletion date does not point at nil the resource is still active.
-		return key.KeyMetadata.DeletionDate != nil, nil
+		// If the deletion date points at nil the resource is still active.
+		return key.KeyMetadata.DeletionDate == nil, nil
 
-	case strings.Contains(resource_arn, "arn:aws:secretsmanager"):
+	case strings.Contains(resourceARN, "arn:aws:secretsmanager"):
 		cfg, err := config.LoadDefaultConfig(ctx)
 		if err != nil {
 			return true, err
 		}
 
 		c := secretsmanager.NewFromConfig(cfg)
-		secret, err := c.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{SecretId: &resource_arn})
+		secret, err := c.DescribeSecret(ctx, &secretsmanager.DescribeSecretInput{SecretId: &resourceARN})
 
 		if err != nil {
 			return true, err
 		}
-		// If the deletion date does not point at nil the resource is still active.
-		return secret.DeletedDate != nil, nil
+		// If the deletion date points at nil the resource is still active.
+		return secret.DeletedDate == nil, nil
 
+	case strings.Contains(resourceARN, "arn:aws:ec2"):
+
+		cfg, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			return true, err
+		}
+
+		c := ec2.NewFromConfig(cfg)
+
+		// Extract the instance ID since the APIs do not accept the ARN.
+		r := regexp.MustCompile(`instance/(i-[a-f0-9]{17})`)
+		results := r.FindStringSubmatch(resourceARN)
+		instanceId := results[1]
+		instanceIds := []string{instanceId}
+		includeAll := true
+		instance, err := c.DescribeInstanceStatus(ctx, &ec2.DescribeInstanceStatusInput{InstanceIds: instanceIds, IncludeAllInstances: &includeAll})
+
+		if err != nil {
+			return true, err
+		}
+
+		// The instances may disappear between the tagging resource call and the describe state call.
+		// If it does disappear it means the instance is not active.
+		if len(instance.InstanceStatuses) != 0 {
+			return false, err
+		}
+
+		// If the instance code is not terminated than the instance is active.
+		terminationCode := int32(48)
+		return instance.InstanceStatuses[0].InstanceState.Code != &terminationCode, nil
 	}
 
 	// If we don't have a special case for the resource type assume it is active.
