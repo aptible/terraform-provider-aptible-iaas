@@ -75,6 +75,8 @@ func GetTaggedResources(ctx context.Context, environmentId, assetId string) ([]s
 // Verifies that a resource is actually active. This has edge cases for different resource types.
 func verifyResourcesIsActive(ctx context.Context, resourceARN string) (bool, error) {
 
+	instanceRegex := regexp.MustCompile(`arn:aws:ec2.*instance/(i-[a-f0-9]{17})`)
+
 	switch {
 	case strings.Contains(resourceARN, "arn:aws:kms"):
 		cfg, err := config.LoadDefaultConfig(ctx)
@@ -106,7 +108,7 @@ func verifyResourcesIsActive(ctx context.Context, resourceARN string) (bool, err
 		// If the deletion date points at nil the resource is still active.
 		return secret.DeletedDate == nil, nil
 
-	case strings.Contains(resourceARN, "arn:aws:ec2"):
+	case instanceRegex.MatchString(resourceARN):
 
 		cfg, err := config.LoadDefaultConfig(ctx)
 		if err != nil {
@@ -116,8 +118,14 @@ func verifyResourcesIsActive(ctx context.Context, resourceARN string) (bool, err
 		c := ec2.NewFromConfig(cfg)
 
 		// Extract the instance ID since the APIs do not accept the ARN.
-		r := regexp.MustCompile(`instance/(i-[a-f0-9]{17})`)
-		results := r.FindStringSubmatch(resourceARN)
+		// r := regexp.MustCompile(`instance/(i-[a-f0-9]{17})`)
+		results := instanceRegex.FindStringSubmatch(resourceARN)
+
+		if len(results) < 2 {
+			fmt.Println(resourceARN)
+			return true, fmt.Errorf("Unable to get instance id from %q", resourceARN)
+		}
+
 		instanceId := results[1]
 		instanceIds := []string{instanceId}
 		includeAll := true
