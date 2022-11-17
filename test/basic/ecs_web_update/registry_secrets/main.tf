@@ -22,7 +22,10 @@ variable "registry_secret_name" {
   type = string
 }
 
-variable "registry_secret_value" {
+variable "registry_secret_username" {
+  type = string
+}
+variable "registry_secret_password" {
   type = string
 }
 
@@ -43,7 +46,10 @@ resource "aptible_aws_secret" "registry_secret" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
   name            = var.registry_secret_name
-  secret_string   = var.registry_secret_value
+  secret_string   = jsonencode({
+    username = var.registry_secret_username
+    password = var.registry_secret_password
+  })
 }
 
 output "registry_secret_id" {
