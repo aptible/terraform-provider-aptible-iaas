@@ -53,7 +53,9 @@ jobs:
         run: |
           TOKEN=$(echo $APTIBLE_PASSWORD | ./test/scripts/auth.sh $APTIBLE_USERNAME)
           echo "APTIBLE_TOKEN=$TOKEN" >> $GITHUB_ENV
-          cat $GITHUB_ENV
+        env:
+          APTIBLE_PASSWORD: ${{ secrets.APTIBLE_PASSWORD }}
+          APTIBLE_USERNAME: ${{ secrets.APTIBLE_USERNAME }}
 
       - name: Build Provider
         run: GOOS=linux make install
