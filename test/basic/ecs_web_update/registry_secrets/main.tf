@@ -46,7 +46,7 @@ resource "aptible_aws_secret" "registry_secret" {
   environment_id  = data.aptible_environment.env.id
   organization_id = data.aptible_organization.org.id
   name            = var.registry_secret_name
-  secret_string   = jsonencode({
+  secret_string = jsonencode({
     username = var.registry_secret_username
     password = var.registry_secret_password
   })
