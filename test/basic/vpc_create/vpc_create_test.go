@@ -2,6 +2,7 @@ package vpc_create
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -13,7 +14,17 @@ import (
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	"github.com/aptible/terraform-provider-aptible-iaas/test/utils"
 )
+
+func cleanupAndAssert(ctx context.Context, t *testing.T, terraformOptions *terraform.Options, environmentId, assetId string) {
+	terraform.Destroy(t, terraformOptions)
+
+	resources, err := utils.GetTaggedResources(ctx, environmentId, assetId)
+	fmt.Printf("Resource response is %v", resources)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(resources))
+}
 
 func TestVPCCreate(t *testing.T) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -26,7 +37,11 @@ func TestVPCCreate(t *testing.T) {
 			"vpc_name":        "test-vpc",
 		},
 	})
+
+	// This is the destroy of last resort. By the time it runs everything should have
+	// already been destroyed, but in case of failure we do one more pass.
 	defer terraform.Destroy(t, terraformOptions)
+
 	terraform.InitAndApply(t, terraformOptions)
 
 	c := client.NewClient(
@@ -47,6 +62,12 @@ func TestVPCCreate(t *testing.T) {
 	assert.Nil(t, vpcAptibleErr)
 	assert.Equal(t, vpcAsset.Id, vpcId)
 	assert.Equal(t, vpcAsset.Status, cac.ASSETSTATUS_DEPLOYED)
+
+	// Runs cleanup and assertions. This needs the asset id which is why we launch it down here.
+	// This will run before the defers above, so this destroy should happen before the destroy
+	// of last resort.
+	defer cleanupAndAssert(ctx, t, terraformOptions, os.Getenv("ENVIRONMENT_ID"), vpcAsset.Id)
+
 	// check aws asset state
 	vpcAws, vpcAwsErr := terratest_aws.GetVpcsE(t, []*legacy_aws_sdk_ec2.Filter{
 		{
@@ -80,4 +101,8 @@ func TestVPCCreate(t *testing.T) {
 	assert.Nil(t, networkAnalysisErr)
 	assert.Equal(t, len(networkAnalysis.NetworkInsightsAnalyses), 1)
 	assert.Equal(t, *networkAnalysis.NetworkInsightsAnalyses[0].Status, "succeeded")
+
+	taggedResources, err := utils.GetTaggedResources(ctx, os.Getenv("ENVIRONMENT_ID"), vpcAsset.Id)
+	assert.Nil(t, err)
+	assert.Greater(t, len(taggedResources), 0)
 }
