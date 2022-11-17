@@ -37,6 +37,7 @@ func WaitForAssetStatusInOperationCompleteState(client client.CloudClient, ctx c
 		},
 	)
 	totalTimeRunning := time.Now().Add(TimeToFail)
+	invalidServerResponseRetries := 0
 
 	for {
 		if totalTimeRunning.Before(time.Now()) {
@@ -54,6 +55,17 @@ func WaitForAssetStatusInOperationCompleteState(client client.CloudClient, ctx c
 		asset, err := client.DescribeAsset(ctx, orgId, envId, id)
 		if err != nil {
 			return nil, err
+		}
+
+		// Note: below block occurs when we get back an empty payload from the server but no error status
+		if asset == nil && invalidServerResponseRetries > 3 {
+			return nil, fmt.Errorf("asset retrieval failed because server replied with an un-actionable" +
+				"or empty response. please enable TF_LOG=debug to view more details")
+		} else if asset == nil {
+			invalidServerResponseRetries += 1
+			tflog.Warn(ctx, "Unable to get asset body, but no error present. You may need to enable TF_LOG=debug to see more details. retrying after a short pause.")
+			time.Sleep(DefaultTimeToWait)
+			continue
 		}
 
 		if asset.Status == cac.ASSETSTATUS_FAILED {
