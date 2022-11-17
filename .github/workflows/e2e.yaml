@@ -1,0 +1,60 @@
+name: E2E Testing
+
+on:
+  push:
+
+env:
+  AWS_DEFAULT_REGION: us-east-1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment: cloud_staging
+
+    strategy:
+      fail-fast: false
+
+      # Reduced to 2 while testing.
+      max-parallel: 2
+
+      matrix:
+        include:
+          - test: vpc_create
+            env_id: "e4eecaee-6ce5-4915-92d0-98a9fe036ab4"
+            aws_account_id: "257348118889"
+
+          - test: vpc_update
+            env_id: "89ca29f6-e245-4ac0-b796-1943d65d5933"
+            aws_account_id: "604856548006"
+
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ^1.0.0
+
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ">=1.18.0"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::${{ matrix.aws_account_id }}:role/github-actions-e2e-testing
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      - name: Configure Aptible credentials
+        run: |
+          echo "APTIBLE_TOKEN=$(echo $APTIBLE_PASSWORD | ./test/scripts/auth.sh $APTIBLE_USERNAME)" >> $GITHUB_ENV
+
+      - name: Build Provider
+        run: make build
+
+      - name: Run ${{ matrix.test }} Test
+        run: make ci-test-${{ matrix.test }}
