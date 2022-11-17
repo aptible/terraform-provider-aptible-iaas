@@ -5,6 +5,7 @@ on:
 
 env:
   AWS_DEFAULT_REGION: us-east-1
+  AWS_DNS_ROLE: "arn:aws:iam::821755571104:role/aptible-cloud-staging-dns-cross-account"
 
 jobs:
   test:
@@ -16,10 +17,9 @@ jobs:
 
       matrix:
         include:
-          # Need to figure out how to manage DNS
-          # - test: acm-dns-validated-create
-          #   env_id: "5bb16655-4102-49f1-88c8-20f198fc139a"
-          #   aws_account_id: "395100626517"
+          - test: acm-dns-validated-create
+            env_id: "5bb16655-4102-49f1-88c8-20f198fc139a"
+            aws_account_id: "395100626517"
 
           - test: acm-non-validated-create
             env_id: "3991abc1-e98e-4f4f-8de1-66e8d7e0c5dd"

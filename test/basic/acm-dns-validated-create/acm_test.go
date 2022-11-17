@@ -22,9 +22,9 @@ func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
 }
 
 func checkSetup() {
-	_, dnsAccountSet := os.LookupEnv("DNS_AWS_ACCOUNT_ID")
+	_, dnsAccountSet := os.LookupEnv("AWS_DNS_ROLE")
 	if !dnsAccountSet {
-		fmt.Printf("DNS_AWS_ACCOUNT_ID environment variable not set\n")
+		fmt.Printf("AWS_DNS_ROLE environment variable not set\n")
 		os.Exit(1)
 	}
 }
@@ -36,7 +36,7 @@ func TestACMDnsValidated(t *testing.T) {
 			"organization_id": os.Getenv("ORGANIZATION_ID"),
 			"environment_id":  os.Getenv("ENVIRONMENT_ID"),
 			"aptible_host":    os.Getenv("APTIBLE_HOST"),
-			"dns_account_id":  os.Getenv("DNS_AWS_ACCOUNT_ID"),
+			"aws_dns_role":    os.Getenv("AWS_DNS_ROLE"),
 			"domain":          "aptible-cloud-staging.com",
 			"subdomain":       "fake-testing-cert-domain",
 		},
@@ -77,8 +77,7 @@ func TestACMDnsValidated(t *testing.T) {
 
 	// check aws asset state
 	certArn := terraform.Output(t, terraformOptions, "cert_arn")
-	certAccountId := terraform.Output(t, terraformOptions, "aptible_aws_account_id")
-	session, sessionErr := terratest_aws.CreateAwsSessionFromRole("us-east-1", fmt.Sprintf("arn:aws:iam::%s:role/OrganizationAccountAccessRole", certAccountId))
+	session, sessionErr := terratest_aws.NewAuthenticatedSession("us-east-1")
 	if sessionErr != nil {
 		fmt.Println(sessionErr.Error())
 		os.Exit(1)
