@@ -9,8 +9,6 @@ package ecsweb
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -18,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	assetutil "github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/util"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/util"
 )
 
@@ -321,43 +320,8 @@ func (r *Resource) Delete(ctx context.Context, req resource.DeleteRequest, resp 
 }
 
 func (r *Resource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// https://developer.hashicorp.com/terraform/plugin/framework/resources/import#multiple-attributes
-	// always found in the following format: "{organization_id},{environment_id},{asset_id}" for this request
-	positionalKeys := []string{"organization_id", "environment_id", "asset_id"}
-	requestDelimitedValues := strings.Split(req.ID, ",")
-	if len(requestDelimitedValues) != 3 {
-		resp.Diagnostics.AddError(
-			"Error insufficient values to import state",
-			fmt.Sprintf("Error unpacking values required for importing state for an asset: Got %d values in csv, expected 3", len(requestDelimitedValues)),
-		)
-		return
-	}
-
-	for idx, id := range requestDelimitedValues {
-		if _, err := uuid.Parse(id); err != nil {
-			resp.Diagnostics.AddError(
-				"Error invalid uuid provided to import state",
-				fmt.Sprintf("Error in trying to parse uuid (id for %s) from CSV-delimited request: %s",
-					positionalKeys[idx], err.Error(),
-				),
-			)
-			return
-		}
-	}
-
-	extractValues := func(input []string) (string, string, string) { return input[0], input[1], input[2] }
-	orgId, envId, assetId := extractValues(requestDelimitedValues)
-
-	assetClientOutput, err := r.client.DescribeAsset(ctx, orgId, envId, assetId)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error reading asset",
-			fmt.Sprintf(
-				"Error when reading asset %s: %s",
-				req.ID,
-				err.Error(),
-			),
-		)
+	assetClientOutput := assetutil.StateImporter(ctx, r.client, req, resp)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
