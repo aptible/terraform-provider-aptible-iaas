@@ -14,11 +14,49 @@ jobs:
     strategy:
       fail-fast: false
 
-      # Reduced to 2 while testing.
-      max-parallel: 2
-
       matrix:
         include:
+          # Need to figure out how to manage DNS
+          # - test: acm-dns-validated-create
+          #   env_id: "5bb16655-4102-49f1-88c8-20f198fc139a"
+          #   aws_account_id: "395100626517"
+
+          - test: acm-none-validated-create
+            env_id: "3991abc1-e98e-4f4f-8de1-66e8d7e0c5dd"
+            aws_account_id: "309087580932"
+
+          - test: ecs_compute_create
+            env_id: "18f97b0c-7054-4041-a064-6cc46c241cb3"
+            aws_account_id: "100952742100"
+
+          - test: ecs_compute_update
+            env_id: "23f58fa1-c190-4f82-a68c-fd1b56b2cbfe"
+            aws_account_id: "759853141917"
+
+          - test: ecs_web_create
+            env_id: "e675979c-cb76-4b78-b6e2-dd4ca7b91342"
+            aws_account_id: "692148248699"
+
+          - test: elasticache_create
+            env_id: "abe891e3-4e08-43af-8525-b290bb175f84"
+            aws_account_id: "917738356426"
+
+          - test: elasticache_update
+            env_id: "03440b0b-9b84-4004-80c9-5cdc6e768f8e"
+            aws_account_id: "327177179188"
+
+          - test: rds
+            env_id: "e9a067d9-8fa6-44c9-9a80-cf76aca8b878"
+            aws_account_id: "740682447574"
+
+          - test: secret_create
+            env_id: "413f7b2f-6d73-4412-8828-ac49f595efd3"
+            aws_account_id: "908740948823"
+
+          - test: secret_update
+            env_id: "f3363014-0b95-47a4-97b4-a5b92fb1c005"
+            aws_account_id: "453862071053"
+
           - test: vpc_create
             env_id: "e4eecaee-6ce5-4915-92d0-98a9fe036ab4"
             aws_account_id: "257348118889"
@@ -45,7 +83,10 @@ jobs:
           go-version: ">=1.18.0"
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        # The @v1-node16 branch should be used until v2 comes out. v1 uses an old github action runtime
+        # and causes deprecation notices, but AWS isn't updating it until v2 is released.
+        # https://github.com/aws-actions/configure-aws-credentials/issues/489
+        uses: aws-actions/configure-aws-credentials@v1-node16
         with:
           role-to-assume: arn:aws:iam::${{ matrix.aws_account_id }}:role/github-actions-e2e-testing
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
