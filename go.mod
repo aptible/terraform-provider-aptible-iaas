@@ -7,7 +7,11 @@ require (
 	github.com/aws/aws-sdk-go v1.40.56
 	github.com/aws/aws-sdk-go-v2 v1.17.1
 	github.com/aws/aws-sdk-go-v2/config v1.17.10
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.70.0
 	github.com/aws/aws-sdk-go-v2/service/elasticache v1.23.0
+	github.com/aws/aws-sdk-go-v2/service/kms v1.18.16
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.13.22
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.16.5
 	github.com/gruntwork-io/terratest v0.40.24
 	github.com/hashicorp/terraform-plugin-framework v0.13.1-0.20221003161105-afd88cb368d0
 	github.com/hashicorp/terraform-plugin-log v0.7.0
