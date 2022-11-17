@@ -88,7 +88,7 @@ release:
 # CI/CD
 
 define run_service_test
-    cd test/basic/${1} && go test -v || exit 1
+    cd test/basic/${1} && go test -v -timeout 3600s || exit 1
 endef
 
 ci-test-%:
