@@ -102,7 +102,7 @@ func TestVPCCreate(t *testing.T) {
 	assert.Equal(t, len(networkAnalysis.NetworkInsightsAnalyses), 1)
 	assert.Equal(t, *networkAnalysis.NetworkInsightsAnalyses[0].Status, "succeeded")
 
-	tagged_resources, err := utils.GetTaggedResources(ctx, os.Getenv("ENVIRONMENT_ID"), vpcAsset.Id)
+	taggedResources, err := utils.GetTaggedResources(ctx, os.Getenv("ENVIRONMENT_ID"), vpcAsset.Id)
 	assert.Nil(t, err)
-	assert.Greater(t, len(tagged_resources), 0)
+	assert.Greater(t, len(taggedResources), 0)
 }

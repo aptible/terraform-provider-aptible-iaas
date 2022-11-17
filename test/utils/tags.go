@@ -118,7 +118,6 @@ func verifyResourcesIsActive(ctx context.Context, resourceARN string) (bool, err
 		c := ec2.NewFromConfig(cfg)
 
 		// Extract the instance ID since the APIs do not accept the ARN.
-		// r := regexp.MustCompile(`instance/(i-[a-f0-9]{17})`)
 		results := instanceRegex.FindStringSubmatch(resourceARN)
 
 		if len(results) < 2 {
