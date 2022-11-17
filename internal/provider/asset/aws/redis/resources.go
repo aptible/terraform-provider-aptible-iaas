@@ -9,9 +9,10 @@ package redis
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -320,5 +321,59 @@ func (r *Resource) Delete(ctx context.Context, req resource.DeleteRequest, resp 
 }
 
 func (r *Resource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	// https://developer.hashicorp.com/terraform/plugin/framework/resources/import#multiple-attributes
+	// always found in the following format: "{organization_id},{environment_id},{asset_id}" for this request
+	positionalKeys := []string{"organization_id", "environment_id", "asset_id"}
+	requestDelimitedValues := strings.Split(req.ID, ",")
+	if len(requestDelimitedValues) != 3 {
+		resp.Diagnostics.AddError(
+			"Error insufficient values to import state",
+			fmt.Sprintf("Error unpacking values required for importing state for an asset: Got %d values in csv, expected 3", len(requestDelimitedValues)),
+		)
+		return
+	}
+
+	for idx, id := range requestDelimitedValues {
+		if _, err := uuid.Parse(id); err != nil {
+			resp.Diagnostics.AddError(
+				"Error invalid uuid provided to import state",
+				fmt.Sprintf("Error in trying to parse uuid (id for %s) from CSV-delimited request: %s",
+					positionalKeys[idx], err.Error(),
+				),
+			)
+			return
+		}
+	}
+
+	extractValues := func(input []string) (string, string, string) { return input[0], input[1], input[2] }
+	orgId, envId, assetId := extractValues(requestDelimitedValues)
+
+	assetClientOutput, err := r.client.DescribeAsset(ctx, orgId, envId, assetId)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading asset",
+			fmt.Sprintf(
+				"Error when reading asset %s: %s",
+				req.ID,
+				err.Error(),
+			),
+		)
+		return
+	}
+
+	asset, err := assetOutputToPlan(ctx, ResourceModel{}, assetClientOutput)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error get asset when trying to update during import (refreshing state)",
+			"Could get asset when trying to update during import (refreshing state): "+req.ID+": "+err.Error(),
+		)
+		return
+	}
+
+	// Set state
+	diags := resp.State.Set(ctx, &asset)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
