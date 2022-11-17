@@ -51,7 +51,9 @@ jobs:
 
       - name: Configure Aptible credentials
         run: |
-          echo "APTIBLE_TOKEN=$(echo $APTIBLE_PASSWORD | ./test/scripts/auth.sh $APTIBLE_USERNAME)" >> $GITHUB_ENV
+          TOKEN=$(echo $APTIBLE_PASSWORD | ./test/scripts/auth.sh $APTIBLE_USERNAME)
+          echo "APTIBLE_TOKEN=$TOKEN" >> $GITHUB_ENV
+          cat $GITHUB_ENV
 
       - name: Build Provider
         run: GOOS=linux make install
