@@ -54,7 +54,7 @@ jobs:
           echo "APTIBLE_TOKEN=$(echo $APTIBLE_PASSWORD | ./test/scripts/auth.sh $APTIBLE_USERNAME)" >> $GITHUB_ENV
 
       - name: Build Provider
-        run: make build
+        run: make install
 
       - name: Run ${{ matrix.test }} Test
         run: make ci-test-${{ matrix.test }}
