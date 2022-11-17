@@ -104,6 +104,7 @@ jobs:
 
       - name: Run ${{ matrix.test }} Test
         run: make ci-test-${{ matrix.test }}
+        timeout-minutes: 130
         env:
           APTIBLE_HOST: ${{ secrets.APTIBLE_HOST }}
           ORGANIZATION_ID: "e6c7394d-054c-454f-9710-dc02fa7406d3"
