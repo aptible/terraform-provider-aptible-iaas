@@ -62,3 +62,5 @@ jobs:
 
       - name: Run ${{ matrix.test }} Test
         run: make ci-test-${{ matrix.test }}
+        env:
+          APTIBLE_HOST: ${{ secrets.APTIBLE_HOST }}
