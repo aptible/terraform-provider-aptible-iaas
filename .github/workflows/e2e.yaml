@@ -1,7 +1,9 @@
 name: E2E Testing
 
 on:
-  push:
+  workflow_dispatch:
+  pull_request:
+    types: ["ready_for_review", "opened"]
 
 env:
   AWS_DEFAULT_REGION: us-east-1
