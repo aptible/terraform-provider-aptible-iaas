@@ -41,6 +41,7 @@ type ResourceModel struct {
 	VpcName                    types.String      `tfsdk:"vpc_name" json:"vpc_name"`
 	Name                       types.String      `tfsdk:"name" json:"name"`
 	IsPublic                   types.Bool        `tfsdk:"is_public" json:"is_public"`
+	IsEcrImage                 types.Bool        `tfsdk:"is_ecr_image"`
 	ContainerName              types.String      `tfsdk:"container_name" json:"container_name"`
 	ContainerPort              types.Number      `tfsdk:"container_port" json:"container_port"`
 	ContainerImage             types.String      `tfsdk:"container_image" json:"container_image"`
@@ -52,6 +53,7 @@ type ResourceModel struct {
 	ConnectsTo                 types.List        `tfsdk:"connects_to"`
 	ContainerRegistrySecretArn types.String      `tfsdk:"container_registry_secret_arn"`
 	LoadBalancerUrl            types.String      `tfsdk:"load_balancer_url"`
+	WaitForSteadyState         types.Bool        `tfsdk:"wait_for_steady_state"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -91,6 +93,10 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	"is_public": {
 		Type:     types.BoolType,
 		Required: true,
+	},
+	"is_ecr_image": {
+		Type:     types.BoolType,
+		Optional: true,
 	},
 	"lb_cert_arn": {
 		Type:     types.StringType,
@@ -145,6 +151,11 @@ var AssetSchema = map[string]tfsdk.Attribute{
 			},
 		}),
 	},
+	"wait_for_steady_state": {
+		Type:     types.BoolType,
+		Optional: true,
+		Computed: true, // if unset, will default to false returned by backend
+	},
 }
 
 func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, error) {
@@ -187,6 +198,14 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 
 	if !plan.ContainerRegistrySecretArn.IsNull() && !plan.ContainerRegistrySecretArn.IsUnknown() {
 		params["container_registry_secret_arn"] = plan.ContainerRegistrySecretArn.Value
+	}
+
+	if !plan.IsEcrImage.IsNull() && !plan.IsEcrImage.IsUnknown() {
+		params["is_ecr_image"] = plan.IsEcrImage.Value
+	}
+
+	if !plan.WaitForSteadyState.IsNull() && !plan.WaitForSteadyState.IsUnknown() {
+		params["wait_for_steady_state"] = plan.WaitForSteadyState.Value
 	}
 
 	input := cac.AssetInput{
@@ -284,6 +303,8 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		ContainerCommand:           cmd,
 		EnvironmentSecrets:         secrets,
 		EnvironmentVariables:       envVars,
+		IsEcrImage:                 util.BoolVal(output.CurrentAssetParameters.Data["is_ecr_image"]),
+		WaitForSteadyState:         util.BoolVal(output.CurrentAssetParameters.Data["wait_for_steady_state"]),
 	}
 
 	return model, nil

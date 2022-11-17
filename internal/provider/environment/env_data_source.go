@@ -38,6 +38,10 @@ func (r EnvDataSource) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnost
 				Type:     types.StringType,
 				Computed: true,
 			},
+			"aws_account_id": {
+				Type:     types.StringType,
+				Computed: true,
+			},
 		},
 	}, nil
 }
@@ -85,9 +89,10 @@ func (r *EnvDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	}
 
 	state := &Env{
-		ID:    types.String{Value: env.Id},
-		OrgID: types.String{Value: env.Organization.Id},
-		Name:  types.String{Value: env.Name},
+		ID:           types.String{Value: env.Id},
+		OrgID:        types.String{Value: env.Organization.Id},
+		Name:         types.String{Value: env.Name},
+		AwsAccountId: types.String{Value: *env.AwsAccountId},
 	}
 
 	tflog.Info(ctx, "Setting state for asset", map[string]interface{}{"state": state})

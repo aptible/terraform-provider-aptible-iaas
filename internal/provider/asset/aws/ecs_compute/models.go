@@ -46,6 +46,8 @@ type ResourceModel struct {
 	ContainerCommand           []types.String    `tfsdk:"container_command" json:"container_command"`
 	ConnectsTo                 types.List        `tfsdk:"connects_to"`
 	ContainerRegistrySecretArn types.String      `tfsdk:"container_registry_secret_arn"`
+	IsEcrImage                 types.Bool        `tfsdk:"is_ecr_image"`
+	WaitForSteadyState         types.Bool        `tfsdk:"wait_for_steady_state"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -123,6 +125,16 @@ var AssetSchema = map[string]tfsdk.Attribute{
 			},
 		}),
 	},
+	"is_ecr_image": {
+		Type:     types.BoolType,
+		Optional: true,
+		Computed: true, // if unset, will default to false returned by backend
+	},
+	"wait_for_steady_state": {
+		Type:     types.BoolType,
+		Optional: true,
+		Computed: true, // if unset, will default to false returned by backend
+	},
 }
 
 func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, error) {
@@ -156,6 +168,14 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 
 	if !plan.ContainerRegistrySecretArn.IsNull() && !plan.ContainerRegistrySecretArn.IsUnknown() {
 		params["container_registry_secret_arn"] = plan.ContainerRegistrySecretArn.Value
+	}
+
+	if !plan.IsEcrImage.IsNull() && !plan.IsEcrImage.IsUnknown() {
+		params["is_ecr_image"] = plan.IsEcrImage.Value
+	}
+
+	if !plan.WaitForSteadyState.IsNull() && !plan.WaitForSteadyState.IsUnknown() {
+		params["wait_for_steady_state"] = plan.WaitForSteadyState.Value
 	}
 
 	// TODO HACK: https://aptible.slack.com/archives/C03C2STPTDX/p1664478414991299
@@ -242,6 +262,8 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		ConnectsTo:                 connectsTo,
 		EnvironmentSecrets:         secrets,
 		EnvironmentVariables:       envVars,
+		IsEcrImage:                 util.BoolVal(output.CurrentAssetParameters.Data["is_ecr_image"]),
+		WaitForSteadyState:         util.BoolVal(output.CurrentAssetParameters.Data["wait_for_steady_state"]),
 	}
 
 	return model, nil

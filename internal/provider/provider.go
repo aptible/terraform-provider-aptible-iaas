@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/acm"
+	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/acm_waiter"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/ecs_compute"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/ecs_web"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/aws/rds"
@@ -49,14 +51,50 @@ func (p *Provider) GetSchema(_ context.Context) (tfsdk.Schema, diag.Diagnostics)
 				Type:     types.StringType,
 				Optional: true,
 			},
+			"auth_host": {
+				Type:     types.StringType,
+				Optional: true,
+			},
 		},
 	}, nil
 }
 
 // providerData schema struct
 type providerData struct {
-	Token types.String `tfsdk:"token"`
-	Host  types.String `tfsdk:"host"`
+	Token    types.String `tfsdk:"token"`
+	AuthHost types.String `tfsdk:"auth_host"`
+	Host     types.String `tfsdk:"host"`
+}
+
+func extractValueFromTokensJson(config *providerData) string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		// skip over this, silently?
+		return config.Token.Value
+	}
+	tokensJson, err := os.ReadFile(homeDir + "/.aptible/tokens.json")
+	if err != nil {
+		return config.Token.Value
+	}
+
+	var output map[string]interface{}
+	if err = json.Unmarshal(tokensJson, &output); err != nil {
+		return config.Token.Value
+	}
+
+	// find if in host and specified
+	if !config.AuthHost.Null {
+		if _, found := output[config.AuthHost.Value]; found {
+			return output[config.AuthHost.Value].(string)
+		}
+	}
+
+	// fall back to default host if no host specified
+	if _, found := output["https://auth.aptible.com"]; found {
+		return output["https://auth.aptible.com"].(string)
+	}
+
+	return config.Token.Value
 }
 
 func (p *Provider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
@@ -79,8 +117,15 @@ func (p *Provider) Configure(ctx context.Context, req provider.ConfigureRequest,
 		return
 	}
 
+	// APTIBLE_TOKEN retrieval
+	// 1 - try to use the token passed in on the provider stanza
+	// 2 - by default, try to use the environment variable
+	// 3 - if no environment variable specified, fall back to API token
 	if config.Token.Null {
 		token = os.Getenv("APTIBLE_TOKEN")
+		if token == "" {
+			token = extractValueFromTokensJson(&config)
+		}
 	} else {
 		token = config.Token.Value
 	}
@@ -135,6 +180,7 @@ func (p *Provider) Resources(ctx context.Context) []func() resource.Resource {
 		vpc.NewResource,
 		secret.NewResource,
 		ecscompute.NewResource,
+		acmwaiter.NewResource,
 	}
 }
 

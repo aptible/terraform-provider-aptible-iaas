@@ -22,6 +22,16 @@ install: clean build
 	cp ./bin/${BINARY}_${VERSION}_${TARGET} "$$HOME/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${TARGET}"
 	@echo "Installed as provider aptible.com/aptible/aptible-iaas version 0.0.0+local"
 
+
+.PHONY: pretty
+pretty: pretty-terraform pretty-go
+
+pretty-terraform:
+	terraform fmt -recursive ./test/
+
+pretty-go:
+	go fmt ./...
+
 test:
 	cd test && go test -v || exit 1
 .PHONY: test
@@ -47,6 +57,9 @@ resource:
 
 	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/ecs_compute/resources.go
 	sed -i '' 's/package acm/package ecscompute/g' ./internal/provider/asset/aws/ecs_compute/resources.go
+
+	cp ./internal/provider/asset/aws/acm/resources.go ./internal/provider/asset/aws/acm_waiter/resources.go
+	sed -i '' 's/package acm/package acmwaiter/g' ./internal/provider/asset/aws/acm_waiter/resources.go
 .PHONY: resource
 
 debug:

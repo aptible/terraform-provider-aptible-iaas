@@ -16,7 +16,7 @@ import (
 var DefaultTimeToWait = 10 * time.Second
 
 // TimeToFail - maximum time to wait before failing a given operation completion
-var TimeToFail = 30 * time.Minute
+var TimeToFail = 1 * time.Hour
 
 // AssetStatusesThatIndicateCompletion - these statuses indicate the asset requested is now in a somewhat
 // final state and is ready for operations
@@ -95,6 +95,25 @@ func StringVal(input interface{}) types.String {
 		val.Null = true
 	} else {
 		val.Value = SafeString(input)
+	}
+	return val
+}
+
+func SafeBool(obj interface{}) bool {
+	switch val := obj.(type) {
+	case bool:
+		return val
+	default:
+		return false
+	}
+}
+
+func BoolVal(input interface{}) types.Bool {
+	val := types.Bool{}
+	if input == nil {
+		val.Null = true
+	} else {
+		val.Value = SafeBool(input)
 	}
 	return val
 }

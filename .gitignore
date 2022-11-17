@@ -44,3 +44,4 @@ terraform
 
 main
 dev.tfrc
+*.plan

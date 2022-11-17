@@ -23,13 +23,15 @@ type ResourceModel struct {
 	OrganizationId types.String `tfsdk:"organization_id" json:"organization_id"`
 	Status         types.String `tfsdk:"status" json:"status"`
 
-	VpcName           types.String `tfsdk:"vpc_name" json:"vpc_name"`
-	Name              types.String `tfsdk:"name" json:"name"`
-	Description       types.String `tfsdk:"description" json:"description"`
-	SnapshotWindow    types.String `tfsdk:"snapshot_window" json:"snapshot_window"`
-	MaintenanceWindow types.String `tfsdk:"maintenance_window" json:"maintainence_window"`
-	UriSecretArn      types.String `tfsdk:"uri_secret_arn" json:"elasticache_token_secret_arn"`
-	SecretsKmsKeyArn  types.String `tfsdk:"secrets_kms_key_arn" json:"elasticache_token_kms_key_arn"`
+	VpcName              types.String `tfsdk:"vpc_name" json:"vpc_name"`
+	Name                 types.String `tfsdk:"name" json:"name"`
+	Description          types.String `tfsdk:"description" json:"description"`
+	SnapshotWindow       types.String `tfsdk:"snapshot_window" json:"snapshot_window"`
+	MaintenanceWindow    types.String `tfsdk:"maintenance_window" json:"maintainence_window"`
+	UriSecretArn         types.String `tfsdk:"uri_secret_arn" json:"elasticache_token_secret_arn"`
+	SecretsKmsKeyArn     types.String `tfsdk:"secrets_kms_key_arn" json:"elasticache_token_kms_key_arn"`
+	ElasticacheARN       types.String `tfsdk:"elasticache_arn" json:"elasticache_arn"`
+	ElasticacheClusterId types.String `tfsdk:"elasticache_cluster_id" json:"elasticache_cluster_id"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -86,6 +88,14 @@ var AssetSchema = map[string]tfsdk.Attribute{
 		Computed: true,
 		Type:     types.StringType,
 	},
+	"elasticache_arn": {
+		Computed: true,
+		Type:     types.StringType,
+	},
+	"elasticache_cluster_id": {
+		Computed: true,
+		Type:     types.StringType,
+	},
 }
 
 func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, error) {
@@ -108,19 +118,26 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 	outputs := *output.Outputs
 
 	model := &ResourceModel{
-		Id:                types.String{Value: output.Id},
-		AssetVersion:      types.String{Value: output.AssetVersion},
-		EnvironmentId:     types.String{Value: output.Environment.Id},
-		OrganizationId:    types.String{Value: output.Environment.Organization.Id},
-		Status:            types.String{Value: string(output.Status)},
-		VpcName:           types.String{Value: output.CurrentAssetParameters.Data["vpc_name"].(string)},
-		Name:              types.String{Value: output.CurrentAssetParameters.Data["name"].(string)},
-		Description:       types.String{Value: output.CurrentAssetParameters.Data["description"].(string)},
-		SnapshotWindow:    types.String{Value: output.CurrentAssetParameters.Data["snapshot_window"].(string)},
-		MaintenanceWindow: types.String{Value: output.CurrentAssetParameters.Data["maintenance_window"].(string)},
-		UriSecretArn:      types.String{Value: util.SafeString(outputs["elasticache_token_secret_arn"].Data)},
-		SecretsKmsKeyArn:  types.String{Value: util.SafeString(outputs["elasticache_token_kms_key_arn"].Data)},
+		Id:                   types.String{Value: output.Id},
+		AssetVersion:         types.String{Value: output.AssetVersion},
+		EnvironmentId:        types.String{Value: output.Environment.Id},
+		OrganizationId:       types.String{Value: output.Environment.Organization.Id},
+		Status:               types.String{Value: string(output.Status)},
+		VpcName:              types.String{Value: output.CurrentAssetParameters.Data["vpc_name"].(string)},
+		Name:                 types.String{Value: output.CurrentAssetParameters.Data["name"].(string)},
+		Description:          types.String{Value: output.CurrentAssetParameters.Data["description"].(string)},
+		SnapshotWindow:       types.String{Value: output.CurrentAssetParameters.Data["snapshot_window"].(string)},
+		MaintenanceWindow:    types.String{Value: output.CurrentAssetParameters.Data["maintenance_window"].(string)},
+		UriSecretArn:         types.String{Value: util.SafeString(outputs["elasticache_token_secret_arn"].Data)},
+		SecretsKmsKeyArn:     types.String{Value: util.SafeString(outputs["elasticache_token_kms_key_arn"].Data)},
+		ElasticacheARN:       types.String{Value: util.SafeString(outputs["elasticache_arn"].Data)},
+		ElasticacheClusterId: types.String{Value: util.SafeString(outputs["elasticache_cluster_id"].Data)},
 	}
+
+	// elasticache_arn
+	// elasticache_primary_endpoint_address
+	// elasticache_reader_endpoint_address
+	// elasticache_engine_version_actual
 
 	return model, nil
 }
