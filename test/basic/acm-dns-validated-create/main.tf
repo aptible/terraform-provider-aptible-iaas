@@ -9,14 +9,14 @@ terraform {
   }
 }
 
-variable "dns_account_id" {
+variable "aws_dns_role" {
   type = string
 }
 provider "aws" {
   alias  = "dns_account"
   region = "us-east-1"
   assume_role {
-    role_arn = "arn:aws:iam::${var.dns_account_id}:role/OrganizationAccountAccessRole"
+    role_arn = var.aws_dns_role
   }
 }
 

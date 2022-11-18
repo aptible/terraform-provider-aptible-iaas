@@ -1,4 +1,4 @@
-variable "dns_account_id" {
+variable "aws_dns_role" {
   type = string
 }
 

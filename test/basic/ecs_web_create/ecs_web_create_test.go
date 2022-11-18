@@ -21,7 +21,7 @@ import (
 
 func checkSetup() {
 	for _, envVarKey := range []string{
-		"DNS_AWS_ACCOUNT_ID",
+		"AWS_DNS_ROLE",
 	} {
 		_, envVar := os.LookupEnv(envVarKey)
 		if !envVar {
@@ -114,7 +114,7 @@ func TestECSWebCreatePublicImage(t *testing.T) {
 			"organization_id":   os.Getenv("ORGANIZATION_ID"),
 			"environment_id":    os.Getenv("ENVIRONMENT_ID"),
 			"aptible_host":      os.Getenv("APTIBLE_HOST"),
-			"dns_account_id":    os.Getenv("DNS_AWS_ACCOUNT_ID"),
+			"aws_dns_role":      os.Getenv("AWS_DNS_ROLE"),
 			"ecs_name":          "ecs-pub-web-test",
 			"container_command": []string{"nginx", "-g", "daemon off;"},
 			"container_image":   "nginx",
@@ -136,10 +136,6 @@ func TestECSWebCreatePublicImage(t *testing.T) {
 		os.Getenv("APTIBLE_TOKEN"),
 	)
 	ctx := context.Background()
-
-	aptibleAccountId := terraform.Output(t, terraformOptions, "aptible_aws_account_id")
-	aptibleAccountRole := fmt.Sprintf("arn:aws:iam::%s:role/OrganizationAccountAccessRole", aptibleAccountId)
-	os.Setenv(terratest_aws.AuthAssumeRoleEnvVar, aptibleAccountRole)
 
 	vpcId := terraform.Output(t, terraformOptions, "vpc_id")
 	vpcAsset, vpcAws, vpcErr := getAptibleAndAWSVPCs(t, ctx, c, vpcId, "testecs-pub-img-web-vpc")
