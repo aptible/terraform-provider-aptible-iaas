@@ -45,7 +45,7 @@ type ResourceModel struct {
 	ContainerName              types.String   `tfsdk:"container_name" json:"container_name"`
 	ContainerPort              types.Number   `tfsdk:"container_port" json:"container_port"`
 	ContainerImage             types.String   `tfsdk:"container_image" json:"container_image"`
-	ContainerCommand           []types.String `tfsdk:"container_command" json:"container_command"`
+	ContainerCommand           types.List     `tfsdk:"container_command" json:"container_command"`
 	EnvironmentSecrets         map[string]Env `tfsdk:"environment_secrets" json:"environment_secrets"`
 	LbCertArn                  types.String   `tfsdk:"lb_cert_arn" json:"lb_cert_arn"`
 	LbCertDomain               types.String   `tfsdk:"lb_cert_domain" json:"lb_cert_domain"`
@@ -123,7 +123,7 @@ var AssetSchema = map[string]tfsdk.Attribute{
 	},
 	"container_command": {
 		Type:     types.ListType{ElemType: types.StringType},
-		Required: true,
+		Optional: true,
 	},
 	"connects_to": {
 		Type:     types.ListType{ElemType: types.StringType},
@@ -157,11 +157,6 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 	// TODO HACK: https://aptible.slack.com/archives/C03C2STPTDX/p1664478414991299
 	dd := strings.SplitN(plan.LbCertDomain.Value, ".", 2)
 
-	cmd := []string{}
-	for _, c := range plan.ContainerCommand {
-		cmd = append(cmd, c.Value)
-	}
-
 	secrets := []EnvJson{}
 	for k, v := range plan.EnvironmentSecrets {
 		secrets = append(secrets, EnvJson{
@@ -181,11 +176,16 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 		"container_name":      plan.ContainerName.Value,
 		"container_image":     plan.ContainerImage.Value,
 		"container_port":      plan.ContainerPort.Value,
-		"container_command":   cmd,
 		"environment_secrets": secrets,
 	}
 
-	if !plan.ContainerRegistrySecretArn.IsNull() && !plan.ContainerRegistrySecretArn.IsUnknown() {
+	if util.HasVal(plan.ContainerCommand) {
+		cmds := []string{}
+		_ = plan.ContainerCommand.ElementsAs(ctx, &cmds, false)
+		params["container_command"] = cmds
+	}
+
+	if util.HasVal(plan.ContainerRegistrySecretArn) {
 		params["container_registry_secret_arn"] = plan.ContainerRegistrySecretArn.Value
 	}
 
@@ -203,7 +203,7 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 		AssetParameters: params,
 	}
 
-	if !plan.ConnectsTo.IsNull() && !plan.ConnectsTo.IsUnknown() {
+	if util.HasVal(plan.ConnectsTo) {
 		connect := []string{}
 		_ = plan.ConnectsTo.ElementsAs(ctx, &connect, false)
 		input.ConnectsTo = connect
@@ -213,12 +213,6 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 }
 
 func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.AssetOutput) (*ResourceModel, error) {
-	cmd := []types.String{}
-	cmdList := output.CurrentAssetParameters.Data["container_command"].([]interface{})
-	for _, c := range cmdList {
-		cmd = append(cmd, types.String{Value: c.(string)})
-	}
-
 	/* connect := []attr.Value{}
 	for _, c := range output.ConnectsTo {
 		connect = append(connect, types.String{Value: c})
@@ -277,7 +271,7 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		ContainerRegistrySecretArn: util.StringVal(output.CurrentAssetParameters.Data["container_registry_secret_arn"]),
 		LoadBalancerUrl:            util.StringVal(outputs["load_balancer_url"].Data),
 		ConnectsTo:                 connectsTo,
-		ContainerCommand:           cmd,
+		ContainerCommand:           util.StrSliceToList(output.CurrentAssetParameters.Data["container_command"]),
 		EnvironmentSecrets:         secrets,
 		IsEcrImage:                 util.BoolVal(output.CurrentAssetParameters.Data["is_ecr_image"]),
 		WaitForSteadyState:         util.BoolVal(output.CurrentAssetParameters.Data["wait_for_steady_state"]),

@@ -8,6 +8,7 @@ import (
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -87,6 +88,26 @@ func SafeString(obj interface{}) string {
 	default:
 		return ""
 	}
+}
+
+func HasVal(input attr.Value) bool {
+	return !input.IsNull() && !input.IsUnknown()
+}
+
+func StrSliceToList(val interface{}) types.List {
+	if val == nil {
+		return types.List{ElemType: types.StringType, Null: true}
+	}
+
+	values := []attr.Value{}
+	for _, d := range val.([]interface{}) {
+		values = append(values, types.String{Value: d.(string)})
+	}
+	ls := types.List{Elems: values, ElemType: types.StringType}
+	if len(values) == 0 {
+		ls.Null = true
+	}
+	return ls
 }
 
 func StringVal(input interface{}) types.String {
