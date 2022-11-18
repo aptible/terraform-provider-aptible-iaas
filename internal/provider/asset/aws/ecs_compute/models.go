@@ -36,17 +36,18 @@ type ResourceModel struct {
 	OrganizationId types.String `tfsdk:"organization_id" json:"organization_id"`
 	Status         types.String `tfsdk:"status" json:"status"`
 
-	VpcName                    types.String   `tfsdk:"vpc_name" json:"vpc_name"`
-	Name                       types.String   `tfsdk:"name" json:"name"`
-	EnvironmentSecrets         map[string]Env `tfsdk:"environment_secrets" json:"environment_secrets"`
-	ContainerName              types.String   `tfsdk:"container_name" json:"container_name"`
-	ContainerPort              types.Number   `tfsdk:"container_port" json:"container_port"`
-	ContainerImage             types.String   `tfsdk:"container_image" json:"container_image"`
-	ContainerCommand           []types.String `tfsdk:"container_command" json:"container_command"`
-	ConnectsTo                 types.List     `tfsdk:"connects_to"`
-	ContainerRegistrySecretArn types.String   `tfsdk:"container_registry_secret_arn"`
-	IsEcrImage                 types.Bool     `tfsdk:"is_ecr_image"`
-	WaitForSteadyState         types.Bool     `tfsdk:"wait_for_steady_state"`
+	VpcName                    types.String      `tfsdk:"vpc_name" json:"vpc_name"`
+	Name                       types.String      `tfsdk:"name" json:"name"`
+	EnvironmentSecrets         map[string]Env    `tfsdk:"environment_secrets" json:"environment_secrets"`
+	EnvironmentVariables       map[string]string `tfsdk:"environment_variables" json:"environment_variables"`
+	ContainerName              types.String      `tfsdk:"container_name" json:"container_name"`
+	ContainerPort              types.Number      `tfsdk:"container_port" json:"container_port"`
+	ContainerImage             types.String      `tfsdk:"container_image" json:"container_image"`
+	ContainerCommand           []types.String    `tfsdk:"container_command" json:"container_command"`
+	ConnectsTo                 types.List        `tfsdk:"connects_to"`
+	ContainerRegistrySecretArn types.String      `tfsdk:"container_registry_secret_arn"`
+	IsEcrImage                 types.Bool        `tfsdk:"is_ecr_image"`
+	WaitForSteadyState         types.Bool        `tfsdk:"wait_for_steady_state"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -107,6 +108,10 @@ var AssetSchema = map[string]tfsdk.Attribute{
 		Type:     types.ListType{ElemType: types.StringType},
 		Optional: true,
 	},
+	"environment_variables": {
+		Optional: true,
+		Type:     types.MapType{ElemType: types.StringType},
+	},
 	"environment_secrets": {
 		Required: true,
 		Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
@@ -145,15 +150,20 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 			SecretJsonKey: v.SecretJsonKey.Value,
 		})
 	}
+	envVars := plan.EnvironmentVariables
+	if envVars == nil {
+		envVars = make(map[string]string)
+	}
 
 	params := map[string]interface{}{
-		"vpc_name":            plan.VpcName.Value,
-		"name":                plan.Name.Value,
-		"container_name":      plan.ContainerName.Value,
-		"container_image":     plan.ContainerImage.Value,
-		"container_port":      plan.ContainerPort.Value,
-		"container_command":   cmd,
-		"environment_secrets": secrets,
+		"vpc_name":              plan.VpcName.Value,
+		"name":                  plan.Name.Value,
+		"container_name":        plan.ContainerName.Value,
+		"container_image":       plan.ContainerImage.Value,
+		"container_port":        plan.ContainerPort.Value,
+		"container_command":     cmd,
+		"environment_secrets":   secrets,
+		"environment_variables": envVars,
 	}
 
 	if !plan.ContainerRegistrySecretArn.IsNull() && !plan.ContainerRegistrySecretArn.IsUnknown() {
@@ -203,6 +213,18 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 	// order which causes terraform to error
 	connectsTo := plan.ConnectsTo
 
+	envVars := make(map[string]string)
+	if _, found := output.CurrentAssetParameters.Data["environment_variables"]; found {
+		ets, err := json.Marshal(output.CurrentAssetParameters.Data["environment_variables"])
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(ets, &envVars)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// TODO: figure out how to not need an intermediate struct for marshal/unmarshal
 	secretsJson := []EnvJson{}
 	bts, err := json.Marshal(output.CurrentAssetParameters.Data["environment_secrets"])
@@ -239,6 +261,7 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		ContainerCommand:           cmd,
 		ConnectsTo:                 connectsTo,
 		EnvironmentSecrets:         secrets,
+		EnvironmentVariables:       envVars,
 		IsEcrImage:                 util.BoolVal(output.CurrentAssetParameters.Data["is_ecr_image"]),
 		WaitForSteadyState:         util.BoolVal(output.CurrentAssetParameters.Data["wait_for_steady_state"]),
 	}

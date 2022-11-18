@@ -38,21 +38,22 @@ type ResourceModel struct {
 	OrganizationId types.String `tfsdk:"organization_id" json:"organization_id"`
 	Status         types.String `tfsdk:"status" json:"status"`
 
-	VpcName                    types.String   `tfsdk:"vpc_name" json:"vpc_name"`
-	Name                       types.String   `tfsdk:"name" json:"name"`
-	IsPublic                   types.Bool     `tfsdk:"is_public" json:"is_public"`
-	IsEcrImage                 types.Bool     `tfsdk:"is_ecr_image"`
-	ContainerName              types.String   `tfsdk:"container_name" json:"container_name"`
-	ContainerPort              types.Number   `tfsdk:"container_port" json:"container_port"`
-	ContainerImage             types.String   `tfsdk:"container_image" json:"container_image"`
-	ContainerCommand           []types.String `tfsdk:"container_command" json:"container_command"`
-	EnvironmentSecrets         map[string]Env `tfsdk:"environment_secrets" json:"environment_secrets"`
-	LbCertArn                  types.String   `tfsdk:"lb_cert_arn" json:"lb_cert_arn"`
-	LbCertDomain               types.String   `tfsdk:"lb_cert_domain" json:"lb_cert_domain"`
-	ConnectsTo                 types.List     `tfsdk:"connects_to"`
-	ContainerRegistrySecretArn types.String   `tfsdk:"container_registry_secret_arn"`
-	LoadBalancerUrl            types.String   `tfsdk:"load_balancer_url"`
-	WaitForSteadyState         types.Bool     `tfsdk:"wait_for_steady_state"`
+	VpcName                    types.String      `tfsdk:"vpc_name" json:"vpc_name"`
+	Name                       types.String      `tfsdk:"name" json:"name"`
+	IsPublic                   types.Bool        `tfsdk:"is_public" json:"is_public"`
+	IsEcrImage                 types.Bool        `tfsdk:"is_ecr_image"`
+	ContainerName              types.String      `tfsdk:"container_name" json:"container_name"`
+	ContainerPort              types.Number      `tfsdk:"container_port" json:"container_port"`
+	ContainerImage             types.String      `tfsdk:"container_image" json:"container_image"`
+	ContainerCommand           []types.String    `tfsdk:"container_command" json:"container_command"`
+	EnvironmentSecrets         map[string]Env    `tfsdk:"environment_secrets" json:"environment_secrets"`
+	EnvironmentVariables       map[string]string `tfsdk:"environment_variables" json:"environment_variables"`
+	LbCertArn                  types.String      `tfsdk:"lb_cert_arn" json:"lb_cert_arn"`
+	LbCertDomain               types.String      `tfsdk:"lb_cert_domain" json:"lb_cert_domain"`
+	ConnectsTo                 types.List        `tfsdk:"connects_to"`
+	ContainerRegistrySecretArn types.String      `tfsdk:"container_registry_secret_arn"`
+	LoadBalancerUrl            types.String      `tfsdk:"load_balancer_url"`
+	WaitForSteadyState         types.Bool        `tfsdk:"wait_for_steady_state"`
 }
 
 var AssetSchema = map[string]tfsdk.Attribute{
@@ -133,6 +134,10 @@ var AssetSchema = map[string]tfsdk.Attribute{
 		Type:     types.StringType,
 		Computed: true,
 	},
+	"environment_variables": {
+		Optional: true,
+		Type:     types.MapType{ElemType: types.StringType},
+	},
 	"environment_secrets": {
 		Required: true,
 		Attributes: tfsdk.MapNestedAttributes(map[string]tfsdk.Attribute{
@@ -171,18 +176,24 @@ func planToAssetInput(ctx context.Context, plan ResourceModel) (cac.AssetInput, 
 		})
 	}
 
+	envVars := plan.EnvironmentVariables
+	if envVars == nil {
+		envVars = make(map[string]string)
+	}
+
 	params := map[string]interface{}{
-		"vpc_name":            plan.VpcName.Value,
-		"name":                plan.Name.Value,
-		"is_public":           plan.IsPublic.Value,
-		"lb_cert_arn":         plan.LbCertArn.Value,
-		"lb_cert_domain":      dd[1],
-		"lb_cert_subdomain":   dd[0],
-		"container_name":      plan.ContainerName.Value,
-		"container_image":     plan.ContainerImage.Value,
-		"container_port":      plan.ContainerPort.Value,
-		"container_command":   cmd,
-		"environment_secrets": secrets,
+		"vpc_name":              plan.VpcName.Value,
+		"name":                  plan.Name.Value,
+		"is_public":             plan.IsPublic.Value,
+		"lb_cert_arn":           plan.LbCertArn.Value,
+		"lb_cert_domain":        dd[1],
+		"lb_cert_subdomain":     dd[0],
+		"container_name":        plan.ContainerName.Value,
+		"container_image":       plan.ContainerImage.Value,
+		"container_port":        plan.ContainerPort.Value,
+		"container_command":     cmd,
+		"environment_secrets":   secrets,
+		"environment_variables": envVars,
 	}
 
 	if !plan.ContainerRegistrySecretArn.IsNull() && !plan.ContainerRegistrySecretArn.IsUnknown() {
@@ -230,6 +241,18 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 	// TODO: HACK we are not keeping what the API sends us because the API changes the
 	// order which causes terraform to error
 	connectsTo := plan.ConnectsTo
+
+	envVars := make(map[string]string)
+	if _, found := output.CurrentAssetParameters.Data["environment_variables"]; found {
+		ets, err := json.Marshal(output.CurrentAssetParameters.Data["environment_variables"])
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(ets, &envVars)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// TODO: figure out how to not need an intermediate struct for marshal/unmarshal
 	secretsJson := []EnvJson{}
@@ -279,6 +302,7 @@ func assetOutputToPlan(ctx context.Context, plan ResourceModel, output *cac.Asse
 		ConnectsTo:                 connectsTo,
 		ContainerCommand:           cmd,
 		EnvironmentSecrets:         secrets,
+		EnvironmentVariables:       envVars,
 		IsEcrImage:                 util.BoolVal(output.CurrentAssetParameters.Data["is_ecr_image"]),
 		WaitForSteadyState:         util.BoolVal(output.CurrentAssetParameters.Data["wait_for_steady_state"]),
 	}
