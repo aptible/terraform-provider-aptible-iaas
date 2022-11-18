@@ -57,8 +57,8 @@ func TestACMNonValidated(t *testing.T) {
 
 	// check aws asset state
 	certArn := terraform.Output(t, terraformOptions, "cert_arn")
-	certAccountId := terraform.Output(t, terraformOptions, "aptible_aws_account_id")
-	session, sessionErr := terratest_aws.CreateAwsSessionFromRole("us-east-1", fmt.Sprintf("arn:aws:iam::%s:role/OrganizationAccountAccessRole", certAccountId))
+	session, sessionErr := terratest_aws.NewAuthenticatedSession("us-east-1")
+
 	if sessionErr != nil {
 		fmt.Println(sessionErr.Error())
 		os.Exit(1)

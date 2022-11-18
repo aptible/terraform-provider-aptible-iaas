@@ -9,35 +9,12 @@ terraform {
   }
 }
 
-variable "aws_dns_role" {
-  type = string
-}
 provider "aws" {
   alias  = "dns_account"
   region = "us-east-1"
   assume_role {
-    role_arn = var.aws_dns_role
+    role_arn = "arn:aws:iam::${var.dns_account_id}:role/OrganizationAccountAccessRole"
   }
-}
-
-variable "organization_id" {
-  type = string
-}
-
-variable "environment_id" {
-  type = string
-}
-
-variable "aptible_host" {
-  type = string
-}
-
-variable "subdomain" {
-  type = string
-}
-
-variable "domain" {
-  type = string
 }
 
 provider "aptible" {
@@ -51,6 +28,12 @@ data "aptible_organization" "org" {
 data "aptible_environment" "env" {
   id     = var.environment_id
   org_id = data.aptible_organization.org.id
+}
+
+resource "aptible_aws_vpc" "vpc" {
+  environment_id  = data.aptible_environment.env.id
+  organization_id = data.aptible_organization.org.id
+  name            = var.vpc_name
 }
 
 resource "aptible_aws_acm" "cert" {
@@ -96,26 +79,34 @@ resource "aptible_aws_acm_waiter" "waiter" {
   validation_fqdns = [for dns in local.validation_dns : dns.name]
 }
 
-output "cert_id" {
-  value = aptible_aws_acm.cert.id
+
+resource "aptible_aws_ecs_web" "web" {
+  environment_id  = data.aptible_environment.env.id
+  organization_id = data.aptible_organization.org.id
+  vpc_name        = aptible_aws_vpc.vpc.name
+  depends_on      = [aptible_aws_acm_waiter.waiter]
+
+  name                  = var.ecs_name
+  container_name        = var.container_name
+  container_image       = var.container_image
+  wait_for_steady_state = true
+
+  container_registry_secret_arn = var.registry_credentials_arn
+  container_command             = var.container_command
+  container_port                = var.container_port
+  is_public                     = var.is_public
+  is_ecr_image                  = var.is_ecr_image
+  lb_cert_arn                   = aptible_aws_acm.cert.arn
+  lb_cert_domain                = aptible_aws_acm.cert.fqdn
+  environment_secrets           = var.environment_secrets
 }
 
-output "cert_waiter_id" {
-  value = aptible_aws_acm_waiter.waiter.id
-}
-
-output "domain_validation_records" {
-  value = aptible_aws_acm.cert.domain_validation_records
-}
-
-output "cert_arn" {
-  value = aptible_aws_acm.cert.arn
-}
-
-output "fqdn" {
-  value = aptible_aws_acm.cert.fqdn
-}
-
-output "aptible_aws_account_id" {
-  value = data.aptible_environment.env.aws_account_id
+resource "aws_route53_record" "cname" {
+  allow_overwrite = true
+  name            = aptible_aws_acm.cert.fqdn
+  records         = [aptible_aws_ecs_web.web.load_balancer_url]
+  ttl             = 60
+  type            = "CNAME"
+  zone_id         = data.aws_route53_zone.domains.zone_id
+  provider        = aws.dns_account
 }

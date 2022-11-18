@@ -1,4 +1,4 @@
-variable "aws_dns_role" {
+variable "dns_account_id" {
   type = string
 }
 
@@ -52,4 +52,14 @@ variable "is_public" {
 
 variable "is_ecr_image" {
   type = bool
+}
+
+variable "registry_credentials_arn" {
+  type    = string
+  default = null
+}
+
+variable "environment_secrets" {
+  type    = map(map(string))
+  default = {}
 }

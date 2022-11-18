@@ -83,3 +83,13 @@ release:
 	GOOS=solaris GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_solaris_amd64
 	GOOS=windows GOARCH=386 go build -o ./bin/${BINARY}_${VERSION}_windows_386
 	GOOS=windows GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_windows_amd64
+
+
+# CI/CD
+
+define run_service_test
+    cd test/basic/${1} && go test -v -timeout 7200s || exit 1
+endef
+
+ci-test-%:
+	$(call run_service_test,$(@F:ci-test-%=%))
