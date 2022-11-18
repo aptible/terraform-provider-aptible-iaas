@@ -1,19 +1,28 @@
-package rds
+package mariadb
 
 import (
 	"context"
+	"encoding/json"
+	"log"
 	"os"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	legacy_aws_sdk_ec2 "github.com/aws/aws-sdk-go/service/ec2"
 	terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
 
 	cac "github.com/aptible/cloud-api-clients/clients/go"
 	"github.com/aptible/terraform-provider-aptible-iaas/internal/client"
+	"github.com/aptible/terraform-provider-aptible-iaas/test/basic/rds_create"
 )
+
+func init() {
+	if err := rds_create.CheckOrRequestVPCLimit(); err != nil {
+		// kill execution of test suite if this just dies
+		log.Println(err)
+		os.Exit(1)
+	}
+}
 
 func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
 	terraform.Destroy(t, terraformOptions)
@@ -21,19 +30,21 @@ func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
 	// test / assert all failures here
 }
 
-func TestRDS(t *testing.T) {
+func TestRDSCreateMariaDB(t *testing.T) {
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: ".",
 
 		Vars: map[string]interface{}{
-			"organization_id": os.Getenv("ORGANIZATION_ID"),
-			"environment_id":  os.Getenv("ENVIRONMENT_ID"),
-			"aptible_host":    os.Getenv("APTIBLE_HOST"),
-			"database_name":   "testrds-db",
-			"vpc_name":        "testrds-vpc",
+			"organization_id":         os.Getenv("ORGANIZATION_ID"),
+			"environment_id":          os.Getenv("ENVIRONMENT_ID"),
+			"aptible_host":            os.Getenv("APTIBLE_HOST"),
+			"database_name":           "test-create-mariadb-106",
+			"database_engine_version": "10.6",
+			"vpc_name":                "rds-create-vpc-mariadb-106",
 		},
 	})
 	defer cleanupAndAssert(t, terraformOptions)
+
 	terraform.InitAndApply(t, terraformOptions)
 
 	c := client.NewClient(
@@ -42,28 +53,6 @@ func TestRDS(t *testing.T) {
 		os.Getenv("APTIBLE_TOKEN"),
 	)
 	ctx := context.Background()
-
-	vpcId := terraform.Output(t, terraformOptions, "vpc_id")
-	// check cloud api's understanding of asset
-	vpcAsset, vpcAptibleErr := c.DescribeAsset(
-		ctx,
-		os.Getenv("ORGANIZATION_ID"),
-		os.Getenv("ENVIRONMENT_ID"),
-		vpcId,
-	)
-	assert.Nil(t, vpcAptibleErr)
-	assert.Equal(t, vpcAsset.Id, vpcId)
-	assert.Equal(t, vpcAsset.Status, cac.ASSETSTATUS_DEPLOYED)
-	// check aws asset state
-	vpcAws, vpcAwsErr := terratest_aws.GetVpcsE(t, []*legacy_aws_sdk_ec2.Filter{
-		{
-			Name:   aws.String("tag:Name"),
-			Values: []*string{aws.String("testrds-vpc")},
-		},
-	}, "us-east-1")
-	assert.Nil(t, vpcAwsErr)
-	assert.GreaterOrEqual(t, len(vpcAws), 1)
-	assert.Equal(t, len(vpcAws[0].Subnets), 6)
 
 	rdsId := terraform.Output(t, terraformOptions, "rds_id")
 	rdsInstanceId := terraform.Output(t, terraformOptions, "rds_db_identifier")
@@ -84,4 +73,20 @@ func TestRDS(t *testing.T) {
 	rdsAws, rdsAwsErr := terratest_aws.GetRdsInstanceDetailsE(t, rdsInstanceId, "us-east-1")
 	assert.Nil(t, rdsAwsErr)
 	assert.Equal(t, *rdsAws.DBInstanceStatus, "available")
+	assert.True(t, *rdsAws.StorageEncrypted)
+	assert.Equal(t, *rdsAws.Engine, "mariadb")
+	assert.Contains(t, *rdsAws.EngineVersion, "10.6")
+	assert.Contains(t, *rdsAws.DBName, "main")
+	assert.False(t, *rdsAws.PubliclyAccessible)
+	assert.Len(t, rdsAws.DBParameterGroups, 1)
+	assert.Equal(t, *rdsAws.DBParameterGroups[0].ParameterApplyStatus, "in-sync")
+
+	secretRawValue := terratest_aws.GetSecretValue(t, "us-east-1", rdsAsset.GetOutputs()["rds_password_secret_arn"].Data.(string))
+	var secretValue map[string]string
+	unmarshalErr := json.Unmarshal([]byte(secretRawValue), &secretValue)
+	assert.Nil(t, unmarshalErr)
+	assert.NotEmpty(t, secretValue)
+	assert.Contains(t, secretValue["endpoint"], "rds.amazonaws.com")
+	assert.Equal(t, secretValue["database"], "main")
+	assert.NotEmpty(t, secretValue["password"])
 }
