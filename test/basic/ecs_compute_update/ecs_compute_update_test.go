@@ -18,21 +18,40 @@ import (
 )
 
 var mutableTFVariables = map[string]interface{}{
-	"organization_id":   os.Getenv("ORGANIZATION_ID"),
-	"environment_id":    os.Getenv("ENVIRONMENT_ID"),
-	"aptible_host":      os.Getenv("APTIBLE_HOST"),
-	"compute_name":      "ecs-compute-test",
-	"container_command": []string{"nginx", "-g", "daemon off;"},
-	"container_image":   "nginx",
-	"container_port":    80,
-	"vpc_name":          "testecs-compute-vpc",
-	"is_ecr_image":      false,
+	"organization_id":               os.Getenv("ORGANIZATION_ID"),
+	"environment_id":                os.Getenv("ENVIRONMENT_ID"),
+	"aptible_host":                  os.Getenv("APTIBLE_HOST"),
+	"compute_name":                  "ecs-compute-test",
+	"container_command":             []string{"nginx", "-g", "daemon off;"},
+	"container_image":               "nginx",
+	"container_port":                80,
+	"container_registry_secret_arn": "",
+	"environment_secrets":           map[string]string{},
+	"vpc_name":                      "testecs-compute-vpc",
+	"is_ecr_image":                  false,
+}
+
+func checkSetup() {
+	for _, envVarKey := range []string{
+		"SECRET_REGISTRY_USERNAME",
+		"SECRET_REGISTRY_PASSWORD",
+	} {
+		_, envVar := os.LookupEnv(envVarKey)
+		if !envVar {
+			fmt.Printf("%s environment variable not set\n", envVarKey)
+			os.Exit(1)
+		}
+	}
 }
 
 func cleanupAndAssert(t *testing.T, terraformOptions *terraform.Options) {
 	terraform.Destroy(t, terraformOptions)
 
 	// test / assert all failures here
+}
+
+func init() {
+	checkSetup()
 }
 
 func getAptibleAndAWSVPCs(t *testing.T, ctx context.Context, client client.CloudClient, vpcId, vpcName string) (*cac.AssetOutput, []*terratest_aws.Vpc, error) {
@@ -121,6 +140,7 @@ func TestECSComputeUpdate(t *testing.T) {
 	assert.Nil(t, err)
 	assertCommonValues(t, vpcId, ecsComputeId, vpcAsset, vpcAws, ecsComputeAsset, ecsClusterAws, ecsServiceAws)
 
+	secretArn := terraform.Output(t, terraformOptions, "secret_arn")
 	type atomicChange struct {
 		key      string
 		updated  interface{}
@@ -167,6 +187,23 @@ func TestECSComputeUpdate(t *testing.T) {
 			updated:  true,
 			original: false,
 		}},
+		// set environment secrets for private registry and use those
+		{{
+			key: "secret_registry",
+			updated: map[string]string{
+				"username": os.Getenv("SECRET_REGISTRY_USERNAME"),
+				"password": os.Getenv("SECRET_REGISTRY_PASSWORD"),
+			},
+			original: map[string]string{},
+		}, {
+			key:      "container_image",
+			updated:  "ghcr.io/aptible/docker-hello-world-private:main",
+			original: "nginx",
+		}, {
+			key:      "container_registry_secret_arn",
+			updated:  secretArn,
+			original: "",
+		}},
 	} {
 		for _, change := range changeSet {
 			mutableTFVariables[change.key] = change.updated
@@ -184,6 +221,13 @@ func TestECSComputeUpdate(t *testing.T) {
 		)
 		assert.Nil(t, err)
 		assertCommonValues(t, vpcId, updatedECSComputeId, vpcAsset, vpcAws, updatedECSComputeAsset, updatedECSClusterAws, updatedECSServiceAws)
+		assert.Equal(t, len(ecsServiceAws.Deployments), 1)
+		ecsTaskDefinitionAws := terratest_aws.GetEcsTaskDefinition(t, "us-east-1", *ecsServiceAws.Deployments[0].TaskDefinition)
+		assert.NotNil(t, ecsTaskDefinitionAws)
+		assert.Equal(t, ecsTaskDefinitionAws.Status, "ACTIVE")
+		assert.Equal(t, ecsTaskDefinitionAws.Family, mutableTFVariables["compute_name"].(string))
+		assert.Equal(t, len(ecsTaskDefinitionAws.ContainerDefinitions), 1)
+		assert.Equal(t, ecsTaskDefinitionAws.ContainerDefinitions[0].Image, mutableTFVariables["container_image"].(string))
 		for _, change := range changeSet {
 			mutableTFVariables[change.key] = change.original
 		}
