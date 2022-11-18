@@ -325,7 +325,7 @@ func TestECSWebChangeSecrets(t *testing.T) {
 		Vars:         initialVariables,
 	})
 
-	// defer cleanupAndAssert(t, terraformOptions)
+	defer cleanupAndAssert(t, terraformOptions)
 	terraform.InitAndApply(t, terraformOptions)
 
 	c := client.NewClient(
@@ -389,7 +389,7 @@ func TestECSWebChangeSecrets(t *testing.T) {
 		},
 	})
 	terraform.InitAndApply(t, terraformRegistrySecretOptions)
-	// defer terraform.Destroy(t, terraformRegistrySecretOptions)
+	defer terraform.Destroy(t, terraformRegistrySecretOptions)
 	plainSecret1Arn := terraform.Output(t, terraformRegistrySecretOptions, "plain_secret_1_arn")
 	plainSecret2Arn := terraform.Output(t, terraformRegistrySecretOptions, "plain_secret_2_arn")
 	jsonSecretArn := terraform.Output(t, terraformRegistrySecretOptions, "json_secret_arn")
@@ -570,6 +570,7 @@ func TestECSWebChangeContainer(t *testing.T) {
 	var nginxFound bool
 	for _, container := range taskDefinition.ContainerDefinitions {
 		if *container.Name == "nginx" {
+			nginxFound = true
 			assert.Equal(t, "nginx", *container.Image)
 			assert.Equal(t, []*string{
 				aws.String("nginx"),
