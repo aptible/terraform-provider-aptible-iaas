@@ -59,7 +59,7 @@ func WaitForAssetStatusInOperationCompleteState(client client.CloudClient, ctx c
 
 		// Note: below block occurs when we get back an empty payload from the server but no error status
 		if asset == nil && invalidServerResponseRetries > 3 {
-			return nil, fmt.Errorf("asset retrieval failed because server replied with an un-actionable" +
+			return nil, fmt.Errorf("asset retrieval failed because server replied with an un-actionable " +
 				"or empty response. please enable TF_LOG=debug to view more details")
 		} else if asset == nil {
 			invalidServerResponseRetries += 1
