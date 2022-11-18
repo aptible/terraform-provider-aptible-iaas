@@ -31,8 +31,6 @@ resource "aptible_aws_rds" "database" {
 
   vpc_name       = aptible_aws_vpc.network.name
   name           = var.database_name
-  engine         = "postgres"
-  engine_version = "14.2"
+  engine         = var.database_engine
+  engine_version = var.database_engine_version
 }
-
-
