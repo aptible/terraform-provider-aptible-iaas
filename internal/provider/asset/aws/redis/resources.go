@@ -9,9 +9,8 @@ package redis
 import (
 	"context"
 	"fmt"
-
+	assetutil "github.com/aptible/terraform-provider-aptible-iaas/internal/provider/asset/util"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -320,5 +319,24 @@ func (r *Resource) Delete(ctx context.Context, req resource.DeleteRequest, resp 
 }
 
 func (r *Resource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	assetClientOutput := assetutil.StateImporter(ctx, r.client, req, resp)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	asset, err := assetOutputToPlan(ctx, ResourceModel{}, assetClientOutput)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error get asset when trying to update during import (refreshing state)",
+			"Could get asset when trying to update during import (refreshing state): "+req.ID+": "+err.Error(),
+		)
+		return
+	}
+
+	// Set state
+	diags := resp.State.Set(ctx, &asset)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
